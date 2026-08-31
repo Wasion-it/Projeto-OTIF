@@ -1,0 +1,41 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Backend: API (uvicorn)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": ["app.main:app", "--host", "127.0.0.1", "--port", "8000"],
+      "cwd": "${workspaceFolder}/backend",
+      "python": "${workspaceFolder}/backend/.venv/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "Backend: Seed (--reset)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "app.seed",
+      "args": ["--reset"],
+      "cwd": "${workspaceFolder}/backend",
+      "python": "${workspaceFolder}/backend/.venv/Scripts/python.exe",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "Frontend: Vite dev",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev",
+      "cwd": "${workspaceFolder}/frontend"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Projeto completo (backend + frontend)",
+      "configurations": ["Backend: API (uvicorn)", "Frontend: Vite dev"],
+      "stopAll": true
+    }
+  ]
+}

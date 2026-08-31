@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# App DB (mock)
+*.db
+*.sqlite3
+
+# Env
+.env
+
+# Node / frontend
+node_modules/
+dist/
+.vite/
+
+# Editor / OS
+.DS_Store
+Thumbs.db

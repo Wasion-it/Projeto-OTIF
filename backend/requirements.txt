@@ -1,0 +1,16 @@
+fastapi==0.115.5
+uvicorn==0.32.1
+pydantic==2.10.3
+pydantic-settings==2.6.1
+python-dateutil==2.9.0.post0
+Faker==33.1.0
+
+# SQLAlchemy e instalado com --no-deps (veja README) porque, em Python 32-bit,
+# a dependencia opcional "greenlet" nao tem wheel pronta e falha ao compilar.
+# O modo SINCRONO do SQLAlchemy (usado aqui) nao precisa de greenlet.
+SQLAlchemy==2.0.36
+typing_extensions>=4.12
+
+# Conexao READ-ONLY com o Jundsoft (SQL Server). Necessario quando ERP_SOURCE=sqlserver.
+# Usa o ODBC Driver do Windows (aqui: driver legado "SQL Server").
+pyodbc==5.2.0
