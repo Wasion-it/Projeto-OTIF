@@ -1,150 +1,225 @@
 # Projeto OTIF
 
-Sistema para calcular o **OTIF** (On Time In Full) da empresa, do recebimento do
-pedido ate a chegada no cliente. Integra dados do ERP (Jundsoft) com confirmacoes
-de entrega inseridas manualmente pelo time comercial.
+Sistema para acompanhar **OTIF (On Time In Full)** do recebimento do pedido até a
+entrega ao cliente. Os pedidos vêm do Jundsoft por conexão SQL Server somente
+leitura; confirmações de entrega e etapas internas são registradas na aplicação.
 
-> Estado atual: **esqueleto rodavel com dados fake**. O ERP e simulado por um mock;
-> nenhuma conexao real com o Jundsoft e feita ainda.
+## Regra oficial do OTIF
 
-## Como o OTIF e calculado
+A unidade de avaliação é o **pedido**:
 
-Avaliado por **item de pedido** e depois agregado:
+- **Contract Date**: data de entrega informada pelo comercial no pedido do JUND.
+- **On Time**: data de entrega real `<= Contract Date`.
+- **In Full**: todos os itens faturados integralmente e o pedido confirmado como
+  recebido completo.
+- **OTIF**: On Time **e** In Full.
 
-- **On Time** = data de entrega real (manual) `<=` data solicitada pelo cliente (ERP)
-- **In Full** = quantidade faturada (ERP) `>=` quantidade pedida (ERP), e marcada como recebida completa
-- **OTIF** = On Time **E** In Full
+A data de digitação é mantida somente para rastreabilidade, filtros de período e
+tendência. **Ela nunca é somada a um SLA para criar o prazo.**
 
-Enquanto nao ha confirmacao de entrega, o item fica **pendente** (nao entra nas taxas).
-A **data de faturamento** e usada como proxy da expedicao para separar
-atraso **interno** (faturou depois do prazo) de atraso de **transporte**.
+Pedidos sem Contract Date válido recebem o status `sem_contract_date`, aparecem
+como pendência para correção no JUND e ficam fora dos denominadores de OTIF e On
+Time. Não há fallback por SLA.
+
+Enquanto há Contract Date, mas ainda não há confirmação de entrega, o pedido fica
+`pendente`. A aplicação mostra os dias até a data oficial nas faixas `no_prazo`,
+`atencao` e `vencido`. A antecedência de `atencao` é configurada por
+`DIAS_ALERTA_PRAZO` (padrão: 7 dias).
+
+A data de faturamento é usada como proxy da expedição para distinguir atraso
+interno (faturamento após o Contract Date) de atraso de transporte.
 
 ## Arquitetura
 
-```
-Jundsoft (SQL Server, read-only)          [mock no esqueleto]
-        |
-        v
-  erp_sync.buscar_pedidos_erp()  --> banco proprio (SQLite/Postgres) --> FastAPI --> React
-                                            ^
-                          confirmacoes manuais (time comercial)
+```text
+Jundsoft (SQL Server, read-only) ──────────────> FastAPI ──> React
+                                                    ^
+Banco próprio (âncoras PV01_ID + confirmações/etapas/históricos manuais)
 ```
 
-O banco proprio guarda os dados sincronizados do ERP + os inputs manuais + serve o
-OTIF calculado. A aplicacao nunca escreve no ERP.
+A API consulta o JUND diretamente e mescla os dados manuais pelo `PV01_ID`. Um
+cache em memória de poucos segundos evita repetir a consulta nas chamadas
+simultâneas do dashboard; a interface atualiza automaticamente a cada 30 segundos.
+A aplicação nunca escreve no Jundsoft. O banco próprio pode ser SQLite em
+desenvolvimento ou PostgreSQL em produção. `ERP_READ_MODE=snapshot` existe apenas
+para rollback; antes de ativá-lo é obrigatório executar `sync.py`, pois âncoras
+criadas no modo direto são excluídas das métricas snapshot.
 
-## Estrutura
+### Fluxo operacional interno
 
+```text
+Pedido → PCP → Produção ─────────────┐
+       └→ Comercial / agendamento ───┴→ Inspeção LEM → Faturamento → Estoque → Expedição → Entrega
 ```
+
+O **Comercial pode agendar a inspeção antecipadamente**, sem esperar o PCP ou a
+Produção serem concluídos. O agendamento fica registrado em paralelo ao fluxo
+produtivo e não altera a etapa atual da Produção.
+
+O LEM só inicia quando as duas condições forem atendidas: a data agendada chegou
+e a Produção foi concluída. Portanto, seu marco zero é a data mais tardia entre
+`inspecao_agendada_data` e `producao_fim`. Antes desse marco o LEM permanece em
+**espera programada com zero dias parados**; somente depois começa a contagem e
+a duração usada nos indicadores de gargalo.
+
+Depois do LEM, **Faturamento** é uma etapa automática. Ela usa a última data/hora
+de emissão não cancelada do pedido no JUND (`FT01_DATA_EMISSAO_H`). Enquanto a consulta não trouxer esse timestamp,
+o processo permanece aguardando Faturamento e a Expedição não pode ser confirmada manualmente.
+
+Após o Faturamento, **Estoque** também é automático: começa no faturamento e
+termina em `FT01_DATA_EMBARQUE`. Enquanto o JUND não informar o embarque, o
+pedido permanece em Estoque e a Expedição fica bloqueada. Esse campo foi
+confirmado como a fonte oficial, embora ainda não tenha cobertura nos pedidos
+atuais do JUND.
+
+Enquanto o pedido estiver no **PCP**, o operador pode confirmar o planejamento
+ou usar **Negar produção**. A negativa exige motivo e uma nova data prevista,
+não avança a etapa e é gravada em histórico permanente. Quando o PCP confirmar
+posteriormente, todas as negativas abertas são marcadas como resolvidas, sem
+apagar os registros anteriores.
+
+## Mapeamento do Jundsoft
+
+| Dado | Origem |
+|---|---|
+| ID do pedido | `TB_PV_01.PV01_ID` |
+| Nº do pedido | `TB_PV_01.PV01_NUMERO_CLIENTE` (fallback `PV01_NUMERO_INTERNO`) |
+| Data de digitação | `TB_PV_01.PV01_DATA_DIGITACAO_H` |
+| **Contract Date** | `TB_PV_02.PV02_DIAS_ENTREGA` |
+| Cliente | `TB_CD_01.CD01_NOME` |
+| SKU / descrição | `TB_CD_04.CD04_CODIGO_INTERNO` / `TB_PV_02.PV02_DESCRICAO` |
+| Quantidade pedida/faturada | `TB_PV_02.PV02_QTDE` / `PV02_QTDE_FATURADA` |
+| Data/hora de faturamento | Última `TB_FT_01.FT01_DATA_EMISSAO_H` não cancelada |
+| Nota fiscal / série | `TB_FT_01.FT01_NOTA` / `FT01_SERIE` da mesma última nota |
+| Data/hora de embarque | `FT01_DATA_EMBARQUE` da mesma última nota fiscal |
+
+`PV02_DIAS_ENTREGA` é convertido de `DD/MM/AAAA` com:
+
+```sql
+TRY_CONVERT(
+    date,
+    NULLIF(LTRIM(RTRIM(i.PV02_DIAS_ENTREGA)), ''),
+    103
+)
+```
+
+Texto vazio ou inválido resulta em Contract Date ausente. Se itens do mesmo
+pedido tiverem datas válidas divergentes, a leitura registra um warning e usa a
+data mais antiga como consolidação conservadora.
+
+A consulta direta considera pedidos efetivados e não cancelados. O banco local
+mantém apenas uma âncora por `PV01_ID` e os registros manuais; `sync.py` permanece
+como ferramenta legada de rollback, não sendo necessário para atualizar o painel.
+
+## Estrutura principal
+
+```text
 backend/
   app/
-    config.py       # settings (DATABASE_URL, erp_source, jundsoft_url)
-    database.py     # engine/sessao SQLAlchemy
-    models.py       # Pedido, ItemPedido, ConfirmacaoEntrega
-    otif.py         # regras de calculo do OTIF
-    schemas.py      # contratos da API
-    queries.py      # consultas com filtros
-    erp_sync.py     # mock do ERP + stub da consulta SQL Server
-    seed.py         # popula dados fake
-    routers/        # pedidos, confirmacoes, metrics
+    erp_sync.py     # consulta read-only e normalização do JUND
+    pedidos_direto.py # cache, âncoras e merge com dados manuais
+    sync.py         # ferramenta legada para rollback do snapshot
+    models.py       # modelos SQLAlchemy
+    otif.py         # regra Contract Date / OTIF
+    avaliacao.py    # carga e avaliação reutilizada pela API
+    routers/        # pedidos, métricas, confirmações, etapas e config
+  alembic/          # migrations
+  tests/            # validações automatizadas
 frontend/
-  src/              # React + Vite (dashboard, tabela, modal de confirmacao)
+  src/              # React + Vite
 ```
 
-## Integracao com o Jundsoft (SQL Server)
+## Configuração
 
-Mapeamento validado contra a base real (`erp_sync.py`):
+Copie `backend/.env.example` para `backend/.env` e ajuste os valores necessários.
+Variáveis principais:
 
-| Dado do OTIF | Origem no Jundsoft |
-|---|---|
-| Nº do pedido | `TB_PV_01.PV01_NUMERO_CLIENTE` (fallback `PV01_NUMERO_INTERNO`) |
-| Data solicitada | `TB_PV_01.PV01_DATA_DIGITACAO_H` (timestamp de digitacao) |
-| Cliente | `TB_CD_01.CD01_NOME` |
-| SKU / descricao | `TB_CD_04.CD04_CODIGO_INTERNO` / `TB_PV_02.PV02_DESCRICAO` |
-| Qtd pedida / faturada | `TB_PV_02.PV02_QTDE` / `PV02_QTDE_FATURADA` |
-| Data de faturamento | `MAX(TB_FT_01.FT01_DATA_EMISSAO)` por pedido (nao cancelada) |
-
-Filtros: apenas pedidos nao cancelados e efetivados (`PV01_CANCELADO=0 AND PV01_EFETIVADO=1`),
-dentro da janela de meses informada. A conexao e **somente leitura** (`readonly=True`).
-
-Rodar o sync real (com `ERP_SOURCE=sqlserver` e credenciais no `.env`):
-
-```powershell
-cd backend
-.\.venv\Scripts\python.exe -m app.sync --meses 12
+```dotenv
+DATABASE_URL=sqlite:///./otif.db
+ERP_SOURCE=mock
+DIAS_ALERTA_PRAZO=7
+META_OTIF=95
 ```
 
-O sync e **idempotente** (chaveia por `PV01_ID`) e **preserva as confirmacoes manuais**:
-ao reprocessar, so atualiza os campos vindos do ERP, nunca apaga entregas ja confirmadas.
-
-> Recomendacao: usar um usuario SQL **somente leitura** dedicado (nao o `SYSADM`).
-
-## Indicador de prazo (pedidos em aberto)
-
-Cada item ainda nao entregue mostra a contagem regressiva ate o prazo
-(`prazo_entrega = data_solicitada + PRAZO_ENTREGA_DIAS`):
-
-- `dias_restantes`: dias ate o prazo (negativo = vencido).
-- `situacao_prazo`: `no_prazo`, `atencao` (faltam <= `DIAS_ALERTA_PRAZO`, padrao 7)
-  ou `vencido`.
-
-O painel resume os pendentes nessas tres faixas (cards clicaveis para filtrar) e a
-tabela mostra "faltam Xd" / "vence hoje" / "vencido ha Xd" por item.
+Para o JUND real, use `ERP_SOURCE=sqlserver` e configure as variáveis
+`JUNDSOFT_*` com um usuário dedicado de somente leitura.
 
 ## Como rodar
 
-### Backend (FastAPI)
+### Backend
 
 ```powershell
 cd backend
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\.venv\Scripts\python.exe -m pip install fastapi==0.115.5 uvicorn==0.32.1 pydantic==2.10.3 pydantic-settings==2.6.1 python-dateutil==2.9.0.post0 Faker==33.1.0 "typing_extensions>=4.12"
-.\.venv\Scripts\python.exe -m pip install SQLAlchemy==2.0.36 --no-deps
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m alembic upgrade head
 
-# popular dados fake
+# Dados fake (somente ERP_SOURCE=mock)
 .\.venv\Scripts\python.exe -m app.seed --reset
 
-# subir a API (http://localhost:8000 , docs em /docs)
+# Com ERP_SOURCE=sqlserver e ERP_READ_MODE=direct, a própria API consulta o JUND.
+# API: http://localhost:8000 (Swagger em /docs)
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
 ```
 
-> **Nota (Python 32-bit):** o `SQLAlchemy` e instalado com `--no-deps` porque a
-> dependencia opcional `greenlet` nao tem wheel pronta para `win32` e falha ao
-> compilar. O modo sincrono do SQLAlchemy (usado aqui) nao precisa de `greenlet`.
-> Para producao, recomenda-se **Python 64-bit**, onde `pip install -r requirements.txt`
-> funciona direto.
+> Em um banco SQLite já existente, execute `alembic upgrade head` antes de iniciar
+> a API. `Base.metadata.create_all()` cria tabelas novas, mas não adiciona colunas
+> a uma tabela existente.
 
-### Frontend (React + Vite)
+### Frontend
 
 ```powershell
 cd frontend
 npm install
-npm run dev        # http://localhost:5173
+npm run dev
 ```
+
+O frontend usa `http://localhost:8000` por padrão. Para outra URL, defina
+`VITE_API_URL` conforme `frontend/.env.example`.
 
 ## Endpoints principais
 
-| Metodo | Rota                  | Descricao                                  |
-|--------|-----------------------|--------------------------------------------|
-| GET    | `/health`             | status da API                              |
-| GET    | `/metrics/otif`       | OTIF %, On Time %, In Full %, motivos       |
-| GET    | `/metrics/tendencia`  | OTIF por mes                                |
-| GET    | `/pedidos/itens`      | itens com status OTIF + prazo (filtros: data/cliente/status/situacao_prazo) |
-| POST   | `/confirmacoes`       | registra/atualiza confirmacao de entrega   |
-| DELETE | `/confirmacoes/{id}`  | remove confirmacao de um item              |
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/health` | estado da API e origem do ERP |
+| GET/PUT | `/config` | meta OTIF e antecedência do alerta |
+| GET | `/metrics/otif` | OTIF, On Time, In Full e qualidade do Contract Date |
+| GET | `/metrics/tendencia` | indicadores por mês de digitação |
+| GET | `/metrics/clientes` | ranking por cliente |
+| GET | `/pedidos` | pedidos avaliados e paginados |
+| POST | `/confirmacoes` | cria/atualiza confirmação de entrega |
+| DELETE | `/confirmacoes/{pedido_id}` | remove confirmação |
+| PUT | `/etapas/{pedido_id}/confirmar` | confirma atomicamente PCP, Produção, LEM ou Expedição |
+| POST | `/etapas/{pedido_id}/negar-producao` | registra negativa histórica do PCP |
+| PUT | `/etapas/{pedido_id}/comercial` | registra antecipadamente a agenda da inspeção |
+| GET/PUT/DELETE | `/etapas/{pedido_id}` | consulta, edição administrativa completa ou remoção |
 
-Filtros de data usam `data_ini` / `data_fim` (formato `AAAA-MM-DD`).
+`GET /pedidos` aceita `data_ini`, `data_fim`, `cliente`, `status`,
+`situacao_prazo`, `sort`, `order`, `page` e `page_size`. O período continua
+filtrando a **data de digitação**. Status válidos incluem `pendente`, `otif`,
+`falha` e `sem_contract_date`.
 
-## Proximos passos (para producao)
+O contrato retorna `contract_date` como campo canônico. `prazo_entrega` é mantido
+temporariamente como alias nullable com o mesmo valor para compatibilidade.
 
-1. **Autenticacao/autorizacao** na API. Hoje NAO ha login; o time comercial altera
-   o numero oficial de OTIF, entao isso e obrigatorio antes de expor.
-2. **Regra do On Time (SLA):** a data solicitada e o momento da digitacao do pedido.
-   Falta definir o prazo aceitavel de entrega a partir dela (ex.: X dias) para o
-   calculo de On Time nao ficar preso a "entrega no mesmo dia".
-3. **Agendar o sync** (`python -m app.sync`) para rodar periodicamente e usar um
-   usuario SQL **somente leitura** dedicado no lugar do `SYSADM`.
-4. **Trocar SQLite por Postgres** (definir `DATABASE_URL`) e adicionar migrations (Alembic).
-5. Acordar formalmente com comercial/logistica as tolerancias de In Full.
+## Migrations e validação
+
+```powershell
+cd backend
+.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe -m pytest -q
+
+cd ..\frontend
+npm run build
 ```
+
+As tabelas e colunas antigas de SLA permanecem fisicamente nesta primeira etapa
+apenas para rollback, mas não são usadas no cálculo nem expostas pela API/UI.
+
+## Antes de produção
+
+- adicionar autenticação e autorização;
+- monitorar disponibilidade/latência da consulta read-only ao JUND;
+- usar cache compartilhado caso a API rode com múltiplos workers;
+- monitorar pedidos `sem_contract_date` como problema de qualidade cadastral;
+- formalizar responsáveis pelas confirmações de entrega e causas de falha.

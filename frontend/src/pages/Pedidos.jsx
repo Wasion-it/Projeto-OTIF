@@ -1,53 +1,64 @@
-import PeriodoFiltro from "../components/PeriodoFiltro.jsx";
+import SegmentosPedidos from "../components/SegmentosPedidos.jsx";
+import FiltrosPedidos from "../components/FiltrosPedidos.jsx";
 import ItensTable from "../components/ItensTable.jsx";
 
 export default function Pedidos({
   filtros,
-  onFiltro,
-  onLimpar,
-  temFiltros,
-  statusFiltro,
-  setStatusFiltro,
-  situacaoFiltro,
-  setSituacaoFiltro,
+  filtrosRascunho,
+  onFiltrosRascunho,
+  onAplicarFiltros,
+  onAplicarSegmento,
+  onLimparFiltros,
+  onRemoverFiltro,
   itens,
   carregando,
+  ordenacao,
+  onOrdenar,
+  page,
+  pageSize,
+  totalItens,
+  totalPaginas,
+  onPage,
+  onPageSize,
+  onExportCsv,
   onConfirmar,
+  onConfirmarEtapa,
+  pedidoSelecionadoId,
   onDetalhe,
 }) {
   return (
     <>
-      <PeriodoFiltro
-        filtros={filtros}
-        onFiltro={onFiltro}
-        onLimpar={onLimpar}
-        temFiltros={temFiltros}
-      >
-        <label>
-          Status
-          <select value={statusFiltro} onChange={(e) => setStatusFiltro(e.target.value)}>
-            <option value="">Todos</option>
-            <option value="otif">OTIF</option>
-            <option value="falha">Falha</option>
-            <option value="pendente">Pendente</option>
-          </select>
-        </label>
-        <label>
-          Prazo (pendentes)
-          <select value={situacaoFiltro} onChange={(e) => setSituacaoFiltro(e.target.value)}>
-            <option value="">Todos</option>
-            <option value="no_prazo">No prazo</option>
-            <option value="atencao">Atenção</option>
-            <option value="vencido">Vencido</option>
-          </select>
-        </label>
-      </PeriodoFiltro>
+      {/* Controles numa única superfície: triagem por situação em cima (1 clique)
+          e refinamento por cliente/período embaixo (Aplicar explícito). */}
+      <section className="pedidos-controles" aria-label="Filtros de pedidos">
+        <SegmentosPedidos filtros={filtros} onSelecionar={onAplicarSegmento} />
+        <FiltrosPedidos
+          filtros={filtros}
+          rascunho={filtrosRascunho}
+          carregando={carregando}
+          onRascunhoChange={onFiltrosRascunho}
+          onAplicar={onAplicarFiltros}
+          onLimparTodos={onLimparFiltros}
+          onRemoverFiltro={onRemoverFiltro}
+        />
+      </section>
 
       <ItensTable
         itens={itens}
-        onConfirmar={onConfirmar}
-        onDetalhe={onDetalhe}
         carregando={carregando}
+        ordenacao={ordenacao}
+        onOrdenar={onOrdenar}
+        page={page}
+        pageSize={pageSize}
+        totalItens={totalItens}
+        totalPaginas={totalPaginas}
+        onPage={onPage}
+        onPageSize={onPageSize}
+        onExportCsv={onExportCsv}
+        onConfirmar={onConfirmar}
+        onConfirmarEtapa={onConfirmarEtapa}
+        pedidoSelecionadoId={pedidoSelecionadoId}
+        onDetalhe={onDetalhe}
       />
     </>
   );

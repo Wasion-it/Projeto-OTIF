@@ -1,3 +1,4 @@
+import { CheckCircle } from "@phosphor-icons/react";
 import { motivoLabel } from "../api.js";
 
 export default function MotivosFalha({ motivos }) {
@@ -9,16 +10,23 @@ export default function MotivosFalha({ motivos }) {
     <section className="panel">
       <div className="panel-head">
         <h3>Falhas por motivo</h3>
-        {total > 0 && <span className="panel-hint">{total} no período</span>}
+        {total > 0 && (
+          <span className="panel-hint">
+            {total} {total === 1 ? "falha" : "falhas"} no período
+          </span>
+        )}
       </div>
       {lista.length === 0 ? (
-        <p className="vazio">Nenhuma falha registrada no período.</p>
+        <p className="vazio">
+          <CheckCircle size={18} weight="fill" color="var(--success)" aria-hidden="true" />
+          Nenhuma falha registrada no período.
+        </p>
       ) : (
         <ul className="motivos">
           {lista.map((m) => (
             <li key={m.motivo}>
               <span className="motivo-nome">{motivoLabel(m.motivo)}</span>
-              <span className="motivo-barra-wrap">
+              <span className="motivo-barra-wrap" aria-hidden="true">
                 <span
                   className="motivo-barra"
                   style={{ width: `${(m.quantidade / max) * 100}%` }}

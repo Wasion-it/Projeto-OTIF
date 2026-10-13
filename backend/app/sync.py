@@ -74,9 +74,15 @@ def sincronizar_pedidos(db: Session, meses: int = 12) -> tuple[int, int]:
         else:
             atualizados += 1
         pedido.numero = p["numero"]
+        pedido.numero_interno = p.get("numero_interno")
         pedido.cliente = p["cliente"]
         pedido.data_pedido = p["data_pedido"]
         pedido.data_solicitada_cliente = p["data_solicitada_cliente"]
+        pedido.contract_date = p.get("contract_date")
+        pedido.faturamento_em = p.get("faturamento_em")
+        pedido.embarque_em = p.get("embarque_em")
+        pedido.nota_fiscal_numero = p.get("nota_fiscal_numero")
+        pedido.nota_fiscal_serie = p.get("nota_fiscal_serie")
         pedido.origem = "ERP"
         _upsert_itens(pedido, p["itens"])
 

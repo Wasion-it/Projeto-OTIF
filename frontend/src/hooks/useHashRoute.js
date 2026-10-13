@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-export const ROTAS_VALIDAS = ["visao-geral", "pedidos", "confirmacoes"];
+export const ROTAS_VALIDAS = ["visao-geral", "pedidos", "ajustes"];
 
 function rotaAtual() {
   const h = window.location.hash.replace(/^#\/?/, "");

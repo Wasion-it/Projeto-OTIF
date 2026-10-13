@@ -1,36 +1,63 @@
-"""Endpoints de listagem de itens/pedidos com o status OTIF calculado."""
+"""Endpoints de listagem de pedidos com o status OTIF calculado."""
 from __future__ import annotations
 
+from dataclasses import asdict
 from datetime import date
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from ..config import get_settings
+from ..avaliacao import carregar_e_avaliar
 from ..database import get_db
-from ..otif import avaliar_item
-from ..queries import carregar_itens
-from ..schemas import ResultadoItemOut
+from ..ordenacao import ORDER_PADRAO, SORT_PADRAO, ordenar_resultados, paginar
+from ..schemas import PedidosPage
 
 router = APIRouter(prefix="/pedidos", tags=["pedidos"])
 
 
-@router.get("/itens", response_model=list[ResultadoItemOut])
-def listar_itens(
-    data_ini: date | None = Query(None, description="Filtra pela data solicitada (inicio)"),
-    data_fim: date | None = Query(None, description="Filtra pela data solicitada (fim)"),
+@router.get("", response_model=PedidosPage)
+def listar_pedidos(
+    data_ini: date | None = Query(None, description="Filtra pela data de digitacao (inicio)"),
+    data_fim: date | None = Query(None, description="Filtra pela data de digitacao (fim)"),
     cliente: str | None = Query(None, description="Filtro parcial por cliente"),
-    status: str | None = Query(None, description="pendente | otif | falha"),
+    status: str | None = Query(
+        None, description="pendente | otif | falha | sem_contract_date"
+    ),
     situacao_prazo: str | None = Query(
         None, description="Filtra pendentes: no_prazo | atencao | vencido"
     ),
+    sort: str = Query(SORT_PADRAO, description="Coluna de ordenacao"),
+    order: str = Query(ORDER_PADRAO, pattern="^(asc|desc)$", description="asc | desc"),
+    page: int = Query(1, ge=1, description="Pagina (1-indexada)"),
+    page_size: int = Query(25, ge=1, le=1000, description="Itens por pagina"),
+    force_refresh: bool = Query(False, description="Ignora o cache curto do JUND"),
     db: Session = Depends(get_db),
 ):
-    s = get_settings()
-    itens = carregar_itens(db, data_ini, data_fim, cliente)
-    resultados = [avaliar_item(i, s.prazo_entrega_dias, s.dias_alerta_prazo) for i in itens]
+    """Lista pedidos com OTIF calculado exclusivamente pelo Contract Date.
+
+    Periodo e cliente sao aplicados sobre a leitura direta do JUND. Status e
+    situacao de prazo sao aplicados depois da avaliacao. O periodo continua baseado na digitacao.
+    """
+    resultados = carregar_e_avaliar(
+        db,
+        data_ini,
+        data_fim,
+        cliente,
+        force_refresh=force_refresh,
+    )
+
     if status:
         resultados = [r for r in resultados if r.status == status]
     if situacao_prazo:
         resultados = [r for r in resultados if r.situacao_prazo == situacao_prazo]
-    return resultados
+
+    resultados = ordenar_resultados(resultados, sort, order)
+    pagina, total, total_paginas = paginar(resultados, page, page_size)
+
+    return PedidosPage(
+        items=[asdict(r) for r in pagina],
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_paginas,
+    )

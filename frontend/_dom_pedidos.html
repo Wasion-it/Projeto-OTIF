@@ -1,0 +1,1759 @@
+<!DOCTYPE html>
+<html lang="pt-br"><head>
+    <script type="module">import { injectIntoGlobalHook } from "/@react-refresh";
+injectIntoGlobalHook(window);
+window.$RefreshReg$ = () => {};
+window.$RefreshSig$ = () => (type) => type;</script>
+
+    <script type="module" src="/@vite/client"></script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OTIF - Painel</title>
+  <style type="text/css" data-vite-dev-id="C:/Projects/Projeto-OTIF/frontend/src/styles.css">/* ==========================================================================
+   Design tokens
+   ========================================================================== */
+:root {
+  /* Superf├¡cies e texto (base neutra) */
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #f1f4f8;
+  --border: #e5e9f0;
+  --border-strong: #d3dae5;
+  --fg: #1b2430;
+  --fg-muted: #5b6675;
+  --fg-subtle: #8a94a3;
+
+  /* Cores sem├ónticas */
+  --primary: #2563eb;
+  --primary-fg: #ffffff;
+  --primary-weak: #eff4ff;
+
+  --success: #15803d;
+  --success-bg: #e7f6ec;
+  --success-fg: #14622f;
+
+  --warning: #b45309;
+  --warning-bg: #fdf1dd;
+  --warning-fg: #8a4708;
+
+  --danger: #c81e1e;
+  --danger-bg: #fdeaea;
+  --danger-fg: #9b1c1c;
+
+  --info: #0e7490;
+
+  /* Escala de espa├ºamento */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+
+  /* Raio */
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 10px;
+
+  /* Eleva├º├úo (s├│ para elementos flutuantes reais) */
+  --shadow-pop: 0 8px 24px -8px rgba(15, 23, 42, 0.25), 0 2px 6px -2px rgba(15, 23, 42, 0.12);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ==========================================================================
+   Shell (sidebar + conte├║do)
+   ========================================================================== */
+.shell {
+  display: flex;
+  min-height: 100vh;
+}
+.sidebar {
+  width: 224px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: var(--sp-4);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+.sidebar-marca {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--fg-muted);
+  padding: var(--sp-2) var(--sp-2) var(--sp-4);
+}
+.sidebar-marca strong { color: var(--fg); font-weight: 700; }
+.nav { display: flex; flex-direction: column; flex: 1; }
+.nav-secao { display: flex; flex-direction: column; gap: 2px; }
+.nav-grupo {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--fg-subtle);
+  padding: var(--sp-4) var(--sp-2) var(--sp-1);
+}
+.nav-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: var(--fg-muted);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+.nav-item:hover { background: var(--surface-2); color: var(--fg); }
+.nav-item.ativo { background: var(--primary-weak); color: var(--primary); }
+
+.sidebar-foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-3) var(--sp-2) 0;
+  font-size: 11px;
+  color: var(--fg-subtle);
+  line-height: 1.5;
+}
+.sidebar-status { display: inline-flex; align-items: center; gap: 6px; }
+.sidebar-status::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--success);
+}
+.sidebar-status.off { color: var(--danger-fg); font-weight: 600; }
+.sidebar-status.off::before { background: var(--danger); }
+.sidebar-nota { padding-left: 13px; }
+
+.content { flex: 1; min-width: 0; }
+.content-inner {
+  max-width: 1560px;
+  margin: 0 auto;
+  padding: var(--sp-6) var(--sp-6) var(--sp-8);
+}
+
+/* ==========================================================================
+   Cabe├ºalho
+   ========================================================================== */
+.topo {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-5);
+}
+.topo-titulo h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.topo-sub {
+  display: block;
+  color: var(--fg-muted);
+  font-size: 13px;
+  margin-top: 2px;
+}
+.topo-acoes {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-shrink: 0;
+}
+.topo-atualizado {
+  font-size: 12px;
+  color: var(--fg-subtle);
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   Bot├Áes
+   ========================================================================== */
+.btn,
+.btn-sec,
+.btn-ghost,
+.btn-danger,
+.btn-sec-danger {
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: var(--r-sm);
+  padding: 8px 14px;
+  cursor: pointer;
+  line-height: 1.2;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.btn {
+  background: var(--primary);
+  color: var(--primary-fg);
+  border: 1px solid var(--primary);
+}
+.btn:hover:not(:disabled) { background: #1d4ed8; border-color: #1d4ed8; }
+.btn:disabled { opacity: 0.55; cursor: default; }
+
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+  border: 1px solid var(--danger);
+}
+.btn-danger:hover:not(:disabled) { background: var(--danger-fg); border-color: var(--danger-fg); }
+.btn-danger:disabled { opacity: 0.55; cursor: default; }
+
+.btn-sec-danger {
+  background: var(--surface);
+  color: var(--danger-fg);
+  border: 1px solid var(--danger);
+}
+.btn-sec-danger:hover:not(:disabled) { background: var(--danger-bg); }
+.btn-sec-danger:disabled { opacity: 0.55; cursor: default; }
+
+.btn-sec {
+  background: var(--surface);
+  color: var(--fg);
+  border: 1px solid var(--border-strong);
+}
+.btn-sec:hover:not(:disabled) { background: var(--surface-2); }
+.btn-sec:disabled { opacity: 0.55; cursor: default; }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--fg-muted);
+  border: 1px solid transparent;
+}
+.btn-ghost:hover:not(:disabled) { background: var(--surface-2); color: var(--fg); }
+.btn-ghost:disabled { opacity: 0.45; cursor: default; }
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--primary);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+.btn-link:hover:not(:disabled) { background: var(--primary-weak); }
+.btn-link:disabled {
+  color: var(--fg-subtle);
+  cursor: not-allowed;
+  text-decoration: none;
+}
+/* Variante de toolbar: mesma linguagem, altura menor. */
+.btn-compacto { font-size: 13px; padding: 6px 10px; }
+.btn-sec.ativo { background: var(--primary-weak); border-color: var(--primary); color: var(--primary); }
+.btn-contador {
+  margin-left: 5px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--fg-muted);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.btn-sec.ativo .btn-contador { background: rgba(37, 99, 235, 0.14); color: var(--primary); }
+
+/* A├º├úo da linha: uma s├│ por pedido, como bot├úo de verdade. */
+.btn-acao {
+  width: 100%;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   Controles da tela de Pedidos
+   Uma superf├¡cie com dois n├¡veis: triagem por situa├º├úo (1 clique) e
+   refinamento por cliente/per├¡odo (Aplicar expl├¡cito).
+   ========================================================================== */
+.pedidos-controles {
+  margin-bottom: var(--sp-4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+/* Barra de segmentos */
+.seg-barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1) var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+}
+.seg-grupo { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1); }
+.seg-divisor {
+  width: 1px;
+  height: 18px;
+  margin: 0 var(--sp-2) 0 var(--sp-1);
+  background: var(--border-strong);
+}
+.seg {
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--fg-muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 5px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.seg:hover:not(:disabled) { background: var(--surface-2); color: var(--fg); }
+.seg:disabled { opacity: 0.5; cursor: default; }
+.seg.ativo {
+  background: var(--primary-weak);
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 600;
+}
+/* Cor s├│ refor├ºa o significado quando o segmento est├í ativo. */
+.seg-ruim.ativo { background: var(--danger-bg); border-color: var(--danger); color: var(--danger-fg); }
+.seg-medio.ativo { background: var(--warning-bg); border-color: var(--warning); color: var(--warning-fg); }
+.seg-bom.ativo { background: var(--success-bg); border-color: var(--success); color: var(--success-fg); }
+.seg-estatico { cursor: default; }
+
+/* Linha de refinamento */
+.filtros-barra {
+  padding: var(--sp-3) var(--sp-4) var(--sp-4);
+  border-top: 1px solid var(--border);
+}
+.filtros-linha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--sp-3);
+}
+.filtro-campo {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--fg-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.filtro-cliente { flex: 1 1 260px; }
+.filtro-campo input {
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  padding: 6px 9px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 14px;
+}
+.filtro-campo input::placeholder { color: var(--fg-subtle); }
+.filtro-campo input:hover:not(:disabled) { border-color: var(--fg-subtle); }
+.filtro-campo input[aria-invalid="true"] { border-color: var(--danger); }
+.filtros-erro {
+  margin-top: var(--sp-2);
+  color: var(--danger-fg);
+  font-size: 12px;
+  font-weight: 500;
+}
+.filtros-rodape {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  margin-top: var(--sp-3);
+}
+.filtros-estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--fg-muted);
+  font-size: 12px;
+}
+.filtros-estado::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--success);
+}
+.filtros-estado:empty { display: none; }
+.filtros-estado.pendente { color: var(--warning-fg); font-weight: 600; }
+.filtros-estado.pendente::before { background: var(--warning); }
+.filtros-acoes { display: flex; align-items: center; gap: var(--sp-2); margin-left: auto; }
+.filtros-chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.filtro-chip {
+  max-width: 100%;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 7px 5px 11px;
+  border: 1px solid var(--primary);
+  border-radius: 999px;
+  background: var(--primary-weak);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.filtro-chip > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.filtro-chip:hover { background: #dbeafe; }
+.filtro-chip-remover {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.12);
+  font-size: 16px;
+  line-height: 1;
+}
+.filtro-chip:hover .filtro-chip-remover { background: rgba(37, 99, 235, 0.2); }
+
+/* ==========================================================================
+   Recorte (contexto de per├¡odo da Vis├úo geral)
+   ========================================================================== */
+.recorte {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-3);
+  margin-bottom: var(--sp-4);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+.recorte-rotulo {
+  color: var(--fg-subtle);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.recorte-info { color: var(--fg-muted); font-size: 12px; }
+
+/* ==========================================================================
+   Faixa de KPIs (uma superf├¡cie, segmentada ÔÇö n├úo um mosaico de cards)
+   ========================================================================== */
+.kpi-strip {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr 1fr;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  margin-bottom: var(--sp-5);
+}
+.metric {
+  padding: var(--sp-4) var(--sp-5);
+  border-left: 1px solid var(--border);
+}
+/* Tiles clic├íveis s├úo <button>: reseta a apar├¬ncia nativa, mant├®m a sem├óntica. */
+button.metric {
+  display: block;
+  width: 100%;
+  font-family: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.kpi-strip .metric:first-child { border-left: none; }
+.metric-titulo {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg-muted);
+}
+.metric-valor {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.15;
+  margin-top: 4px;
+  color: var(--fg);
+}
+.metric-hero .metric-valor { font-size: 40px; }
+.metric-sufixo { font-size: 18px; font-weight: 600; margin-left: 2px; color: var(--fg-muted); }
+.metric-rodape { font-size: 12px; color: var(--fg-muted); margin-top: var(--sp-2); }
+.metric-sub { font-size: 12px; color: var(--fg-subtle); margin-top: 2px; }
+
+.metric-bom .metric-valor { color: var(--success); }
+.metric-medio .metric-valor { color: var(--warning); }
+.metric-ruim .metric-valor { color: var(--danger); }
+
+/* Chip de meta */
+.meta {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.meta-ok { background: var(--success-bg); color: var(--success-fg); }
+.meta-bad { background: var(--danger-bg); color: var(--danger-fg); }
+
+/* ==========================================================================
+   Bloco de risco (pendentes por prazo) ÔÇö barra de tiles clic├íveis
+   ========================================================================== */
+.risk-block { margin-bottom: var(--sp-5); }
+.risk-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+}
+.risk-head-titulo { font-size: 13px; font-weight: 600; color: var(--fg); }
+.risk-sub { font-size: 12px; color: var(--fg-subtle); }
+.risk-bar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-3);
+}
+.risk-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border-strong);
+  border-radius: var(--r-md);
+  padding: var(--sp-3) var(--sp-4);
+  cursor: pointer;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+/* Sem shadow-pop: isto n├úo flutua, s├│ responde ao ponteiro. */
+.risk-item:hover { border-color: var(--border-strong); background: var(--surface-2); }
+.risk-item .metric-titulo { text-transform: none; letter-spacing: 0; font-size: 13px; }
+.risk-item .metric-valor { font-size: 26px; }
+.risk-item.metric-bom { border-left-color: var(--success); }
+.risk-item.metric-medio { border-left-color: var(--warning); }
+.risk-item.metric-ruim { border-left-color: var(--danger); }
+.risk-item[aria-current] {
+  border-color: var(--primary);
+  border-left-color: var(--primary);
+}
+
+/* ==========================================================================
+   Pain├®is (gr├íficos / tabela) ÔÇö card usado s├│ onde h├í conte├║do complexo
+   ========================================================================== */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+  margin-bottom: var(--sp-5);
+}
+.panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+.panel-head h3 { margin: 0; font-size: 16px; font-weight: 600; }
+.panel-hint { font-size: 13px; color: var(--fg-muted); }
+.panel-hint .up { color: var(--success); font-style: normal; font-weight: 600; }
+.panel-hint .down { color: var(--danger); font-style: normal; font-weight: 600; }
+
+.panels-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-5);
+  margin-bottom: var(--sp-5);
+}
+.panels-2 .panel { margin-bottom: 0; }
+
+/* ==========================================================================
+   Gr├ífico de evolu├º├úo (linha + ├írea, escala ajustada ao dom├¡nio)
+   ========================================================================== */
+.grafico {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: var(--sp-2);
+}
+.grafico-y {
+  position: relative;
+  grid-column: 1;
+  grid-row: 1;
+  width: 34px;
+}
+.grafico-y span {
+  position: absolute;
+  right: 0;
+  transform: translateY(-50%);
+  color: var(--fg-subtle);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.grafico-y .grafico-y-meta { color: var(--fg-muted); font-weight: 600; }
+
+.grafico-plot { position: relative; grid-column: 2; grid-row: 1; }
+.grafico-plot svg { display: block; overflow: visible; }
+.grafico-meta-linha {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed var(--border-strong);
+  pointer-events: none;
+}
+.grafico-area { fill: var(--primary); opacity: 0.08; }
+.grafico-linha {
+  fill: none;
+  stroke: var(--primary);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.grafico-ponto { fill: var(--surface); stroke: var(--primary); stroke-width: 2; }
+.grafico-ponto.abaixo { stroke: var(--danger); }
+.grafico-ponto.ultimo { fill: var(--primary); }
+.grafico-ponto.ultimo.abaixo { fill: var(--danger); }
+.grafico-valor {
+  fill: var(--fg-muted);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: inherit;
+}
+.grafico-valor.abaixo { fill: var(--danger-fg); }
+
+.grafico-x {
+  position: relative;
+  grid-column: 2;
+  grid-row: 2;
+  height: 16px;
+  margin-top: var(--sp-2);
+}
+.grafico-x span {
+  position: absolute;
+  transform: translateX(-50%);
+  color: var(--fg-subtle);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   Falhas por motivo
+   ========================================================================== */
+.motivos { list-style: none; margin: 0; padding: 0; }
+.motivos li {
+  display: grid;
+  grid-template-columns: minmax(90px, 38%) minmax(0, 1fr) 48px;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-bottom: 7px;
+  font-size: 13px;
+}
+.motivo-nome { color: var(--fg); }
+.motivo-barra-wrap { background: var(--surface-2); border-radius: 4px; height: 12px; overflow: hidden; }
+.motivo-barra {
+  display: block;
+  height: 100%;
+  background: var(--danger);
+  opacity: 0.75;
+  border-radius: 4px;
+}
+.motivo-qtd { text-align: right; font-weight: 600; color: var(--fg); }
+
+/* Semaforo da barra (usado no ranking de OTIF por cliente). */
+.motivo-barra.barra-bom { background: var(--success); }
+.motivo-barra.barra-medio { background: var(--warning); }
+.motivo-barra.barra-ruim { background: var(--danger); }
+.motivos li .motivo-nome {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   Tabela de itens
+   ========================================================================== */
+.tabela-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+.tabela-toolbar .toolbar-spacer { flex: 1; }
+.tabela-contagem {
+  color: var(--fg);
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.exportacao-erro {
+  margin: calc(-1 * var(--sp-1)) 0 var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--danger);
+  border-radius: var(--r-sm);
+  background: var(--danger-bg);
+  color: var(--danger-fg);
+  font-size: 12px;
+}
+.densidade-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+.densidade-toggle button {
+  border: none;
+  background: var(--surface);
+  color: var(--fg-muted);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.densidade-toggle button + button { border-left: 1px solid var(--border); }
+.densidade-toggle button.ativo { background: var(--primary-weak); color: var(--primary); }
+
+/* O wrapper ├® o scrollport: sem altura m├íxima, `position: sticky` no thead n├úo
+   tem contra o que grudar e os cabe├ºalhos somem ao rolar a p├ígina. */
+.tabela-wrap {
+  overflow: auto;
+  max-height: min(70vh, 820px);
+  overscroll-behavior: contain;
+}
+.tabela { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+.tabela th,
+.tabela td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.tabela thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface);
+  color: var(--fg-muted);
+  font-weight: 600;
+  font-size: 12px;
+  /* border-bottom n├úo acompanha c├®lula sticky; a sombra interna acompanha. */
+  border-bottom: 0;
+  box-shadow: inset 0 -1px 0 var(--border-strong);
+}
+.tabela tbody tr:hover td { background: var(--surface-2); }
+.tabela tbody tr.clicavel { cursor: pointer; }
+.tabela tbody tr.selecionada td,
+.tabela tbody tr.selecionada:hover td { background: var(--primary-weak); }
+.tabela tbody tr.selecionada td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
+
+/* A a├º├úo da linha ├® o motivo da tela existir: fica sempre alcan├º├ível, mesmo
+   com scroll horizontal. */
+.tabela th.col-acoes,
+.tabela td.col-acoes {
+  position: sticky;
+  right: 0;
+  width: 1%;
+  background: var(--surface);
+  box-shadow: -1px 0 0 var(--border);
+}
+.tabela thead th.col-acoes {
+  z-index: 3;
+  box-shadow: -1px 0 0 var(--border), inset 0 -1px 0 var(--border-strong);
+}
+.tabela tbody tr:hover td.col-acoes { background: var(--surface-2); }
+.tabela tbody tr.selecionada td.col-acoes,
+.tabela tbody tr.selecionada:hover td.col-acoes { background: var(--primary-weak); }
+.th-estatico { display: block; padding: 8px 10px; }
+.tabela.compacta .th-estatico { padding: 5px 8px; }
+
+/* Cabe├ºalho orden├ível */
+.tabela th.sortable { padding: 0; user-select: none; }
+.th-sort-button {
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+  padding: 8px 10px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.th-sort-button:hover { color: var(--fg); background: var(--surface-2); }
+.th-sort-button:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.tabela th .th-inner { display: inline-flex; align-items: center; gap: 4px; }
+.tabela th .sort-ind { color: var(--primary); font-size: 10px; }
+.tabela th.num .th-sort-button { justify-content: flex-end; }
+.tabela th.num .th-inner { flex-direction: row-reverse; }
+
+/* Densidade compacta (padr├úo: a tarefa ├® escanear muitas linhas) */
+.tabela.compacta th,
+.tabela.compacta td { padding: 5px 8px; }
+.tabela.compacta th.sortable { padding: 0; }
+.tabela.compacta .th-sort-button { padding: 5px 8px; }
+
+.tabela .num { text-align: right; }
+.tabela .cliente { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+.tabela .atraso { color: var(--danger); font-weight: 600; }
+
+/* Coluna faturado/pedido decodificada */
+.qtd { font-variant-numeric: tabular-nums; }
+.qtd-bar {
+  margin-top: 3px;
+  height: 4px;
+  background: var(--surface-2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.qtd-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--warning);
+}
+.qtd-bar.full span { background: var(--success); }
+
+/* Badges de status */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.badge-ok { background: var(--success-bg); color: var(--success-fg); }
+.badge-fail { background: var(--danger-bg); color: var(--danger-fg); }
+.badge-pend { background: var(--surface-2); color: var(--fg-muted); }
+
+/* Coluna de prazo */
+.prazo-ok { color: var(--success); font-weight: 600; }
+.prazo-atencao { color: var(--warning); font-weight: 600; }
+.prazo-vencido { color: var(--danger); font-weight: 700; }
+.prazo-neutro { color: var(--fg-subtle); }
+
+/* Estado vazio: diz o que aconteceu e o que fazer, sem ilustra├º├úo gigante. */
+.tabela-vazio {
+  display: table-cell;
+  padding: var(--sp-8) var(--sp-4);
+  text-align: center;
+  white-space: normal;
+}
+.tabela-vazio strong { display: block; color: var(--fg); font-size: 14px; }
+.tabela-vazio span { display: block; margin-top: var(--sp-1); color: var(--fg-muted); font-size: 13px; }
+
+/* Pagina├º├úo */
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sp-3);
+  margin-top: var(--sp-3);
+  font-size: 13px;
+  color: var(--fg-muted);
+}
+.pager-info { font-variant-numeric: tabular-nums; }
+.pager select {
+  padding: 5px 7px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  font-size: 13px;
+  background: var(--surface);
+  color: var(--fg);
+}
+.pager-btns { display: inline-flex; gap: 4px; }
+.pager-btns button {
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--fg);
+  border-radius: var(--r-sm);
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.pager-btns button:disabled { opacity: 0.45; cursor: default; }
+
+/* ==========================================================================
+   Popover (seletor de colunas) ÔÇö sombra aqui ├® eleva├º├úo real
+   ========================================================================== */
+.popover-wrap { position: relative; }
+.popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  width: 232px;
+  max-height: 340px;
+  overflow-y: auto;
+  padding: var(--sp-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+}
+.popover-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: 2px var(--sp-1) var(--sp-2);
+  border-bottom: 1px solid var(--border);
+  color: var(--fg-subtle);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.popover-head .btn-link { font-size: 11px; text-transform: none; letter-spacing: normal; }
+.popover-lista { list-style: none; margin: var(--sp-1) 0 0; padding: 0; }
+.popover-opcao {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 6px var(--sp-1);
+  border-radius: var(--r-sm);
+  color: var(--fg);
+  font-size: 13px;
+  cursor: pointer;
+}
+.popover-opcao:hover { background: var(--surface-2); }
+.popover-opcao input { margin: 0; accent-color: var(--primary); }
+.popover-opcao small { margin-left: auto; color: var(--fg-subtle); font-size: 11px; }
+.popover-opcao.fixa { color: var(--fg-muted); cursor: default; }
+.popover-opcao.fixa:hover { background: none; }
+
+/* ==========================================================================
+   Estados: erro, vazio, skeleton
+   ========================================================================== */
+.erro {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  background: var(--danger-bg);
+  border: 1px solid var(--danger);
+  color: var(--danger-fg);
+  border-radius: var(--r-md);
+  padding: var(--sp-3) var(--sp-4);
+  font-size: 13px;
+  margin-bottom: var(--sp-5);
+}
+.vazio { color: var(--fg-muted); font-size: 13px; margin: var(--sp-2) 0; }
+
+@keyframes skeleton-pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.45; }
+  100% { opacity: 1; }
+}
+.skeleton {
+  background: var(--surface-2);
+  border-radius: 4px;
+  animation: skeleton-pulse 1.2s ease-in-out infinite;
+}
+.sk-strip {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr 1fr;
+  gap: 1px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  margin-bottom: var(--sp-5);
+}
+.sk-seg { padding: var(--sp-4) var(--sp-5); }
+.sk-line { height: 12px; margin-bottom: 8px; }
+.sk-line.big { height: 30px; width: 60%; }
+
+/* ==========================================================================
+   Modal
+   ========================================================================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-4);
+  z-index: 80;
+}
+.modal {
+  background: var(--surface);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+  width: 440px;
+  max-width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-pop);
+}
+.modal h3 { margin: 0 0 4px; font-size: 17px; }
+.modal-sub { color: var(--fg-muted); font-size: 13px; margin-bottom: var(--sp-3); }
+.modal-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+  background: var(--surface-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  margin-bottom: var(--sp-3);
+  color: var(--fg-muted);
+}
+.modal-info b { color: var(--fg); }
+.modal form { display: flex; flex-direction: column; gap: var(--sp-3); }
+.modal label {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--fg-muted);
+  gap: 4px;
+}
+.modal input,
+.modal select,
+.modal textarea {
+  padding: 7px 9px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  font-size: 14px;
+  color: var(--fg);
+  background: var(--surface);
+  font-family: inherit;
+}
+.modal label.check {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--fg);
+}
+.modal-acoes { display: flex; justify-content: flex-end; gap: var(--sp-2); margin-top: var(--sp-2); }
+
+/* ==========================================================================
+   Drawer de detalhe (painel lateral)
+   ========================================================================== */
+@keyframes drawer-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes drawer-slide { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.32);
+  display: flex;
+  justify-content: flex-end;
+  z-index: 60;
+  animation: drawer-fade 0.15s ease-out;
+}
+.drawer {
+  width: clamp(440px, 42vw, 560px);
+  max-width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+  display: flex;
+  flex-direction: column;
+  outline: none;
+  animation: drawer-slide 0.2s ease-out;
+}
+.drawer-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-5);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.drawer-head h2 { margin: 0; font-size: 19px; line-height: 1.25; }
+.drawer-head .drawer-sub {
+  font-size: 14px;
+  color: var(--fg);
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+}
+.drawer-identificadores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px var(--sp-3);
+  margin-top: 5px;
+  color: var(--fg-subtle);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.drawer-close {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--fg-muted);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: var(--r-sm);
+}
+.drawer-close:hover { background: var(--surface-2); color: var(--fg); }
+.drawer-close:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.drawer-body { padding: var(--sp-5); overflow-y: auto; overscroll-behavior: contain; flex: 1; }
+.drawer-foot {
+  padding: var(--sp-4) var(--sp-5);
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+}
+
+.drawer-section { margin: 0 0 var(--sp-5); }
+.drawer-section-titulo {
+  margin: 0 0 var(--sp-2);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--fg-subtle);
+}
+.drawer-overview .flags { margin-bottom: var(--sp-3); }
+.drawer-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-2);
+}
+.drawer-overview-card {
+  min-width: 0;
+  min-height: 92px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: var(--sp-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+.drawer-overview-label {
+  color: var(--fg-muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.drawer-overview-card strong {
+  color: var(--fg);
+  font-size: 16px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+.drawer-overview-card small { color: var(--fg-muted); font-size: 11px; line-height: 1.3; }
+.drawer-overview-card.tom-perigo { background: var(--danger-bg); border-color: var(--danger); }
+.drawer-overview-card.tom-perigo strong { color: var(--danger-fg); }
+.drawer-overview-card.tom-atencao { background: var(--warning-bg); border-color: var(--warning); }
+.drawer-overview-card.tom-atencao strong { color: var(--warning-fg); }
+.drawer-overview-card.tom-ok { background: var(--success-bg); border-color: var(--success); }
+.drawer-overview-card.tom-ok strong { color: var(--success-fg); }
+.drawer-alerta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: calc(-1 * var(--sp-2)) 0 var(--sp-5);
+  padding: var(--sp-3);
+  border-left: 3px solid var(--danger);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  background: var(--danger-bg);
+  color: var(--danger-fg);
+  font-size: 13px;
+}
+.drawer-alerta span { font-size: 12px; }
+
+/* Lista chave-valor */
+.kv { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 7px var(--sp-3); font-size: 13px; }
+.kv dt { color: var(--fg-muted); }
+.kv dd { margin: 0; color: var(--fg); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+
+/* Marca├º├Áes de resultado (On Time / In Full) */
+.flags { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+.flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+}
+.flag-ok { background: var(--success-bg); color: var(--success-fg); border-color: transparent; }
+.flag-bad { background: var(--danger-bg); color: var(--danger-fg); border-color: transparent; }
+.flag-neutro { background: var(--surface-2); color: var(--fg-muted); }
+
+.drawer-disclosure {
+  margin-bottom: var(--sp-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  overflow: clip;
+}
+.drawer-disclosure summary {
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 10px var(--sp-3);
+  color: var(--fg);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.drawer-disclosure summary::-webkit-details-marker { display: none; }
+.drawer-disclosure summary::before {
+  content: "ÔÇ║";
+  color: var(--fg-subtle);
+  font-size: 20px;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+.drawer-disclosure[open] summary::before { transform: rotate(90deg); }
+.drawer-disclosure summary:hover { background: var(--surface-2); }
+.drawer-disclosure summary:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.drawer-disclosure-meta {
+  max-width: 210px;
+  overflow: hidden;
+  color: var(--fg-muted);
+  font-size: 12px;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.drawer-disclosure-body { padding: var(--sp-3); border-top: 1px solid var(--border); }
+.drawer-disclosure-body > :first-child { margin-top: 0; }
+.drawer-disclosure-body > :last-child { margin-bottom: 0; }
+.drawer-disclosure-acoes { display: flex; justify-content: flex-end; margin-bottom: var(--sp-3); }
+
+.obs-box {
+  margin-top: var(--sp-3);
+  background: var(--surface-2);
+  border-radius: var(--r-md);
+  padding: var(--sp-3);
+  font-size: 13px;
+  color: var(--fg);
+  white-space: pre-wrap;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ==========================================================================
+   Rodap├®
+   ========================================================================== */
+.rodape-app {
+  margin-top: var(--sp-6);
+  text-align: center;
+  color: var(--fg-subtle);
+  font-size: 12px;
+}
+
+/* ==========================================================================
+   Responsivo
+   ========================================================================== */
+@media (max-width: 1280px) {
+  .filtro-cliente { flex-basis: 100%; }
+}
+
+@media (max-width: 960px) {
+  .kpi-strip,
+  .sk-strip { grid-template-columns: repeat(2, 1fr); }
+  .kpi-strip .metric:nth-child(3) { border-left: none; }
+  .panels-2 { grid-template-columns: 1fr; }
+  .tabela-wrap { max-height: none; }
+}
+
+/* Colapsa a sidebar em barra de navega├º├úo horizontal no topo */
+@media (max-width: 860px) {
+  .shell { flex-direction: column; }
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: static;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-2) var(--sp-4);
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .sidebar-marca { padding: 0 var(--sp-3) 0 0; white-space: nowrap; }
+  .nav { flex-direction: row; align-items: center; gap: 2px; flex: 1; }
+  .nav-grupo { display: none; }
+  .nav-item { width: auto; white-space: nowrap; }
+  .sidebar-foot { display: none; }
+}
+@media (max-width: 560px) {
+  .content-inner { padding: var(--sp-4); }
+  .kpi-strip,
+  .sk-strip { grid-template-columns: 1fr; }
+  .risk-bar { grid-template-columns: 1fr; }
+
+  .recorte { align-items: stretch; }
+  .seg-barra { padding: var(--sp-3); }
+  .seg-divisor { display: none; }
+  .seg { min-height: 36px; }
+
+  .filtros-barra { padding: var(--sp-3); }
+  .filtros-linha { flex-direction: column; align-items: stretch; }
+  .filtro-cliente { flex-basis: auto; }
+  .filtro-campo input { height: 44px; }
+  .filtros-rodape { flex-direction: column; align-items: stretch; }
+  .filtros-acoes { width: 100%; margin-left: 0; }
+  .filtros-acoes .btn,
+  .filtros-acoes .btn-ghost { min-height: 44px; flex: 1; }
+  .filtro-chip { min-height: 40px; }
+
+  /* Em telas estreitas a grade rola com a p├ígina; coluna sticky s├│ atrapalha. */
+  .tabela th.col-acoes,
+  .tabela td.col-acoes { position: static; box-shadow: none; }
+  .tabela td.col-acoes { border-left: 1px solid var(--border); }
+
+  .tabela-toolbar { flex-wrap: wrap; }
+  .tabela-toolbar .toolbar-spacer { display: none; }
+  .tabela-contagem { width: 100%; }
+  .densidade-toggle { flex: 1; }
+  .densidade-toggle button { min-height: 40px; flex: 1; }
+  .popover { right: auto; left: 0; }
+  .pager { justify-content: space-between; flex-wrap: wrap; }
+  .pager > label { width: 100%; display: flex; align-items: center; justify-content: space-between; }
+  .pager select { min-height: 40px; }
+  .pager-btns { flex: 1; }
+  .pager-btns button { min-height: 44px; flex: 1; }
+
+  .drawer-overlay { background: var(--surface); }
+  .drawer { width: 100%; max-width: none; box-shadow: none; }
+  .drawer-head { padding: var(--sp-4); }
+  .drawer-head h2 { font-size: 18px; }
+  .drawer-close { width: 44px; height: 44px; }
+  .drawer-body { padding: var(--sp-4); }
+  .drawer-overview-card { min-height: 88px; }
+  .drawer-disclosure-meta { max-width: 150px; }
+  .kv { grid-template-columns: 1fr; gap: 2px; }
+  .kv dt:not(:first-child) { margin-top: var(--sp-2); }
+  .kv dd { padding-bottom: 2px; }
+  .drawer-foot {
+    padding: var(--sp-3) var(--sp-4) calc(var(--sp-3) + env(safe-area-inset-bottom));
+  }
+  .drawer-foot .btn,
+  .drawer-foot .btn-sec { min-height: 44px; flex: 1; }
+  .modal-overlay { align-items: flex-end; padding: 0; }
+  .modal {
+    width: 100%;
+    max-height: 94dvh;
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+    padding-bottom: calc(var(--sp-5) + env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 390px) {
+  .drawer-overview-grid { grid-template-columns: 1fr; }
+  .drawer-disclosure-meta { max-width: 120px; }
+}
+
+/* ==========================================================================
+   Etapa atual (tag na tabela)
+   ========================================================================== */
+.etapa-tag {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--fg);
+  background: var(--surface-2);
+  border-radius: var(--r-sm);
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+.etapa-tag.etapa-done { background: var(--success-bg); color: var(--success-fg); }
+
+/* ==========================================================================
+   Timeline do processo (drawer)
+   ========================================================================== */
+.drawer-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.proc-resumo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  font-size: 12px;
+  color: var(--fg-muted);
+  background: var(--surface-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  margin-bottom: var(--sp-3);
+}
+.proc-resumo b { color: var(--fg); }
+
+.timeline { list-style: none; margin: 0; padding: 0; }
+.tl-item {
+  position: relative;
+  display: flex;
+  gap: var(--sp-3);
+  padding-bottom: var(--sp-3);
+}
+/* Linha vertical conectando os pontos */
+.tl-item:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 9px;
+  top: 20px;
+  bottom: 0;
+  width: 2px;
+  background: var(--border);
+}
+.tl-dot {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--surface-2);
+  color: var(--fg-subtle);
+  border: 1px solid var(--border-strong);
+  z-index: 1;
+}
+.tl-done .tl-dot { background: var(--success); color: #fff; border-color: var(--success); }
+.tl-current .tl-dot { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+.tl-body { flex: 1; min-width: 0; }
+.tl-linha { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); }
+.tl-nome { font-size: 13px; font-weight: 500; color: var(--fg); }
+.tl-current .tl-nome { color: var(--primary); }
+.tl-todo .tl-nome { color: var(--fg-subtle); }
+.tl-dias {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg-muted);
+  white-space: nowrap;
+}
+.tl-dias.tl-gargalo { color: var(--danger); }
+.tl-data { font-size: 12px; color: var(--fg-subtle); font-variant-numeric: tabular-nums; }
+.tl-obs {
+  font-size: 12px;
+  color: var(--fg-muted);
+  background: var(--surface-2);
+  border-radius: var(--r-sm);
+  padding: 4px 8px;
+  margin-top: 4px;
+  white-space: pre-wrap;
+}
+
+/* Agrupa data + observa├º├úo de cada etapa no editor completo */
+.etapa-grupo { display: flex; flex-direction: column; gap: var(--sp-2); }
+.etapa-grupo input[readonly] {
+  background: var(--surface-2);
+  color: var(--fg-muted);
+  cursor: default;
+}
+
+/* ==========================================================================
+   Pedido: numero + numero interno na tabela
+   ========================================================================== */
+.ped-num { font-weight: 600; }
+.ped-link {
+  display: block;
+  padding: 1px 2px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--primary);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.ped-link:hover { text-decoration: underline; text-underline-offset: 2px; }
+.ped-link:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.ped-interno { font-size: 11px; color: var(--fg-subtle); margin-top: 1px; }
+
+/* ==========================================================================
+   Lista de itens dentro do drawer do pedido
+   ========================================================================== */
+.itens-lista { display: flex; flex-direction: column; gap: 6px; }
+.item-linha {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: 8px 10px;
+  background: var(--surface-2);
+  border-radius: var(--r-sm);
+}
+.item-info { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.item-sku { font-size: 12px; font-weight: 600; color: var(--fg); font-variant-numeric: tabular-nums; }
+.item-desc {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--fg-muted);
+  overflow-wrap: anywhere;
+}
+.item-qtd { flex-shrink: 0; margin-top: 1px; }
+.flag-mini {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.flag-mini.ok { background: var(--success-bg); color: var(--success-fg); }
+.flag-mini.bad { background: var(--warning-bg); color: var(--warning-fg); }
+.flag-mini.neutro { background: var(--surface); color: var(--fg-muted); }
+
+/* ==========================================================================
+   Ajustes (configura├º├úo)
+   ========================================================================== */
+.aviso-ok {
+  margin-bottom: var(--sp-4);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--success);
+  border-radius: var(--r-md);
+  background: var(--success-bg);
+  color: var(--success-fg);
+  font-size: 13px;
+}
+.form-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+  align-items: flex-end;
+}
+.form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--fg-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.form-grid input {
+  width: 180px;
+  height: 36px;
+  padding: 6px 9px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 14px;
+}
+.form-acoes {
+  margin-left: auto;
+}
+.config-note p {
+  max-width: 76ch;
+  margin: 0 0 var(--sp-2);
+  color: var(--fg-muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.config-note p:last-child { margin-bottom: 0; }
+
+.badge-missing {
+  background: var(--warning-bg);
+  color: var(--warning-fg);
+}
+.flag-missing {
+  background: var(--warning-bg);
+  color: var(--warning-fg);
+  border-color: transparent;
+}
+.prazo-cell { display: flex; flex-direction: column; gap: 2px; white-space: nowrap; }
+.prazo-data { color: var(--fg); font-weight: 600; font-variant-numeric: tabular-nums; }
+.prazo-contagem { font-size: 11px; }
+.prazo-ausente { color: var(--warning-fg); font-size: 12px; font-weight: 700; }
+
+.contract-date-alert {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-3);
+  margin: 0 0 var(--sp-5);
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--warning);
+  border-left-width: 4px;
+  border-radius: var(--r-md);
+  background: var(--warning-bg);
+  color: var(--warning-fg);
+  text-align: left;
+  cursor: pointer;
+}
+.contract-date-alert:hover { box-shadow: var(--shadow-pop); }
+.contract-date-alert:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.contract-date-alert-count {
+  min-width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--warning);
+  color: white;
+  font-size: 17px;
+  font-weight: 700;
+}
+.contract-date-alert > span:nth-child(2) { display: flex; flex-direction: column; gap: 2px; }
+.contract-date-alert small { color: var(--warning-fg); font-size: 12px; }
+.contract-date-alert-action { font-size: 12px; font-weight: 700; white-space: nowrap; }
+
+.modal-contract-alert {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: var(--sp-4);
+  padding: var(--sp-3);
+  border-left: 3px solid var(--warning);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  background: var(--warning-bg);
+  color: var(--warning-fg);
+  font-size: 13px;
+}
+.modal-contract-alert span { font-size: 12px; line-height: 1.4; }
+
+@media (max-width: 560px) {
+  .contract-date-alert { grid-template-columns: auto minmax(0, 1fr); }
+  .contract-date-alert-action { grid-column: 2; }
+}
+
+/* Etapa Comercial e agendamento da inspe├º├úo */
+.etapa-transicao-info {
+  padding: var(--sp-3);
+  border-left: 3px solid var(--primary);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  background: var(--primary-weak);
+  color: var(--fg-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.campo-ajuda {
+  color: var(--fg-subtle);
+  font-size: 11px;
+  font-weight: 400;
+}
+.tl-agendamento {
+  margin-top: 3px;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+.etapa-cell-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+.etapa-agendamento {
+  color: var(--primary);
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Negativas de Produ├º├úo pelo PCP */
+.negativa-modal-info { margin-bottom: var(--sp-4); }
+.drawer-alerta-pcp {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: calc(-1 * var(--sp-2)) 0 var(--sp-5);
+  padding: var(--sp-3);
+  border-left: 3px solid var(--danger);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  background: var(--danger-bg);
+  color: var(--danger-fg);
+  font-size: 13px;
+}
+.drawer-alerta-pcp span { font-size: 12px; line-height: 1.4; }
+.negativas-historico {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.negativa-item {
+  padding: var(--sp-3);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border-strong);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+.negativa-item.aberta { border-left-color: var(--danger); background: var(--danger-bg); }
+.negativa-item.resolvida { border-left-color: var(--success); }
+.negativa-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  color: var(--fg-muted);
+  font-size: 11px;
+}
+.negativa-head strong { color: var(--fg); font-size: 12px; }
+.negativa-item.aberta .negativa-head strong { color: var(--danger-fg); }
+.negativa-item p { margin: var(--sp-2) 0; color: var(--fg); font-size: 13px; white-space: pre-wrap; }
+.negativa-meta { display: flex; flex-wrap: wrap; gap: 4px var(--sp-3); color: var(--fg-muted); font-size: 11px; }
+</style></head>
+  <body>
+    <div id="root"><div class="shell"><aside class="sidebar"><div class="sidebar-marca">Painel <strong>OTIF</strong></div><nav class="nav" aria-label="Se├º├Áes do painel"><div class="nav-secao"><button type="button" class="nav-item ">Vis├úo geral</button></div><div class="nav-secao"><div class="nav-grupo">Opera├º├úo</div><button type="button" class="nav-item ativo" aria-current="page">Pedidos</button></div><div class="nav-secao"><div class="nav-grupo">Administra├º├úo</div><button type="button" class="nav-item ">Ajustes</button></div></nav><div class="sidebar-foot"><span class="sidebar-status on">JUND conectado</span><span class="sidebar-nota">Acesso sem autentica├º├úo</span></div></aside><div class="content"><div class="content-inner"><header class="topo"><div class="topo-titulo"><h1>Pedidos</h1><span class="topo-sub">656 pedidos no recorte atual</span></div><div class="topo-acoes"><span class="topo-atualizado" title="A tela recarrega sozinha a cada 30 segundos">Atualizado ├ás 07:55 ┬À auto 30 s</span><button class="btn-sec">Atualizar</button></div></header><section class="pedidos-controles" aria-label="Filtros de pedidos"><div class="seg-barra" role="group" aria-label="Filtrar pedidos por situa├º├úo"><div class="seg-grupo"><button type="button" class="seg  ativo" aria-pressed="true">Todos</button></div><div class="seg-grupo"><span class="seg-divisor" aria-hidden="true"></span><button type="button" class="seg  " aria-pressed="false">Pendentes</button><button type="button" class="seg seg-ruim " aria-pressed="false">Vencidos</button><button type="button" class="seg seg-medio " aria-pressed="false">Aten├º├úo</button><button type="button" class="seg seg-bom " aria-pressed="false">No prazo</button></div><div class="seg-grupo"><span class="seg-divisor" aria-hidden="true"></span><button type="button" class="seg seg-bom " aria-pressed="false">OTIF</button><button type="button" class="seg seg-ruim " aria-pressed="false">Falha</button><button type="button" class="seg seg-medio " aria-pressed="false">Sem Contract Date</button></div></div><div class="filtros-barra"><form class="filtros-linha" novalidate="" role="search" aria-label="Refinar pedidos por cliente e per├¡odo de digita├º├úo"><label class="filtro-campo filtro-cliente" for="filtro-cliente">Cliente<input id="filtro-cliente" type="search" placeholder="Nome ou parte do nome" autocomplete="off" value=""></label><label class="filtro-campo" for="filtro-data-inicial">Digita├º├úo de<input id="filtro-data-inicial" type="date" aria-invalid="false" value=""></label><label class="filtro-campo" for="filtro-data-final">at├®<input id="filtro-data-final" type="date" aria-invalid="false" value=""></label><div class="filtros-acoes"><button type="submit" class="btn" disabled="">Aplicar</button><button type="button" class="btn-ghost" disabled="">Limpar filtros</button></div></form></div></section><section class="panel panel-tabela" aria-busy="false" aria-labelledby="pedidos-tabela-titulo"><h3 id="pedidos-tabela-titulo" class="sr-only">Lista de pedidos</h3><div class="tabela-toolbar"><span class="tabela-contagem" aria-live="polite">656 pedidos</span><div class="toolbar-spacer"></div><div class="densidade-toggle" role="group" aria-label="Densidade da tabela"><button type="button" class="ativo" aria-pressed="true">Compacta</button><button type="button" class="" aria-pressed="false">Confort├ível</button></div><div class="popover-wrap"><button type="button" class="btn-sec btn-compacto " aria-expanded="false" aria-haspopup="true">Colunas <span class="btn-contador">7</span></button></div><button type="button" class="btn-sec btn-compacto">Exportar CSV</button></div><div class="tabela-wrap"><table class="tabela compacta" aria-labelledby="pedidos-tabela-titulo"><thead><tr><th class="sortable " aria-sort="none"><button type="button" class="th-sort-button" aria-label="Ordenar por Status"><span class="th-inner">Status</span></button></th><th class="sortable " aria-sort="none"><button type="button" class="th-sort-button" aria-label="Ordenar por Pedido"><span class="th-inner">Pedido</span></button></th><th class="sortable " aria-sort="none"><button type="button" class="th-sort-button" aria-label="Ordenar por Cliente"><span class="th-inner">Cliente</span></button></th><th class="sortable " aria-sort="none"><button type="button" class="th-sort-button" aria-label="Ordenar por Etapa"><span class="th-inner">Etapa</span></button></th><th class="sortable " aria-sort="ascending"><button type="button" class="th-sort-button" aria-label="Ordenar por Contract Date, ordem crescente"><span class="th-inner">Contract Date<span class="sort-ind" aria-hidden="true">Ôû▓</span></span></button></th><th class="sortable num" aria-sort="none"><button type="button" class="th-sort-button" aria-label="Ordenar por Faturado / Pedido"><span class="th-inner">Faturado / Pedido</span></button></th><th class="sortable " aria-sort="none"><button type="button" class="th-sort-button" aria-label="Ordenar por Atraso"><span class="th-inner">Atraso</span></button></th><th class="col-acoes"><span class="th-estatico">A├º├úo</span></th></tr></thead><tbody><tr class="clicavel "><td class=""><span class="badge badge-pend">Pendente</span></td><td class=""><button type="button" class="ped-num ped-link" aria-label="Ver detalhes do pedido 4200212117, cliente COMPANHIA PAULISTA DE FOR├çA E LUZ" aria-haspopup="dialog" aria-expanded="false" aria-controls="pedido-drawer">4200212117</button><div class="ped-interno">ID ERP 6647</div><div class="ped-interno">interno 4545</div></td><td class="cliente"><span title="COMPANHIA PAULISTA DE FOR├çA E LUZ">COMPANHIA PAULISTA DE FOR├çA E LUZ</span></td><td class=""><span class="etapa-cell-wrap"><span class="etapa-tag">PCP / Planejamento</span></span></td><td class=""><span class="prazo-cell" title="Contract Date: 2026-07-27"><span class="prazo-data">2026-07-27</span><span class="prazo-contagem prazo-vencido">vencido h├í 63d</span></span></td><td class="num"><div class="qtd">394 de 394</div><div class="qtd-bar full"><span style="width: 100%;"></span></div></td><td class="">-</td><td class="col-acoes"><button type="button" class="btn-sec btn-acao">Confirmar PCP</button></td></tr><tr class="clicavel "><td class=""><span class="badge badge-fail">Falha</span></td><td class=""><button type="button" class="ped-num ped-link" aria-label="Ver detalhes do pedido PC 30/2026, cliente AMG COMERCIO &amp; REPRESENTACOES DE MATERIAIS" aria-haspopup="dialog" aria-expanded="false" aria-controls="pedido-drawer">PC 30/2026</button><div class="ped-interno">ID ERP 6606</div><div class="ped-interno">interno 4504</div></td><td class="cliente"><span title="AMG COMERCIO &amp; REPRESENTACOES DE MATERIAIS">AMG COMERCIO &amp; REPRESENTACOES DE MATERIAIS</span></td><td class=""><span class="etapa-cell-wrap"><span class="etapa-tag etapa-done">Conclu├¡do</span><span class="etapa-agendamento">inspe├º├úo 2026-09-24</span></span></td><td class=""><span class="prazo-cell" title="Contract Date: 2026-07-30"><span class="prazo-data">2026-07-30</span></span></td><td class="num"><div class="qtd">250 de 250</div><div class="qtd-bar full"><span style="width: 100%;"></span></div></td><td class=""><span class="atraso">+57d (interno)</span></td><td class="col-acoes"><button type="button" class="btn-sec btn-acao">Editar</button></td></tr><tr class="clicavel "><td class=""><span class="badge badge-pend">Pendente</span></td><td class=""><button type="button" class="ped-num ped-link" aria-label="Ver detalhes do pedido 38141/26, cliente BELVER COMERCIAL EL├ëTRICA EIRELI" aria-haspopup="dialog" aria-expanded="false" aria-controls="pedido-drawer">38141/26</button><div class="ped-interno">ID ERP 6597</div><div class="ped-interno">interno 4495</div></td><td class="cliente"><span title="BELVER COMERCIAL EL├ëTRICA EIRELI">BELVER COMERCIAL EL├ëTRICA EIRELI</span></td><td class=""><span class="etapa-cell-wrap"><span class="etapa-tag">Comercial / Agendamento</span></span></td><td class=""><span class="prazo-cell" title="Contract Date: 2026-07-30"><span class="prazo-data">2026-07-30</span><span class="prazo-contagem prazo-vencido">vencido h├í 60d</span></span></td><td class="num"><div class="qtd">694 de 694</div><div class="qtd-bar full"><span style="width: 100%;"></span></div></td><td class="">-</td><td class="col-acoes"><button type="button" class="btn-sec btn-acao">Agendar inspe├º├úo</button></td></tr><tr class="clicavel "><td class=""><span class="badge badge-pend">Pendente</span></td><td class=""><button type="button" class="ped-num ped-link" aria-label="Ver detalhes do pedido PC 32/2026, cliente BELVER COMERCIAL EL├ëTRICA EIRELI" aria-haspopup="dialog" aria-expanded="false" aria-controls="pedido-drawer">PC 32/2026</button><div class="ped-interno">ID ERP 6463</div><div class="ped-interno">interno 4374</div></td><td class="cliente"><span title="BELVER COMERCIAL EL├ëTRICA EIRELI">BELVER COMERCIAL EL├ëTRICA EIRELI</span></td><td class=""><span class="etapa-cell-wrap"><span class="etapa-tag">Inspe├º├úo LEM</span><span class="etapa-agendamento">10d no LEM</span></span></td><td class=""><span class="prazo-cell" title="Contract Date: 2026-07-30"><span class="prazo-data">2026-07-30</span><span class="prazo-contagem prazo-vencido">vencido h├í 60d</span></span></td><td class="num"><div class="qtd">0 de 728</div><div class="qtd-bar "><span style="width: 0%;"></span></div></td><td class="">-</td><td class="col-acoes"><button type="button" class="btn-sec btn-acao">Confirmar inspe├º├úo</button></td></tr><tr class="clicavel "><td class=""><span class="badge badge-fail">Falha</span></td><td class=""><button type="button" class="ped-num ped-link" aria-label="Ver detalhes do pedido 4200213183, cliente COMPANHIA PIRATININGA DE FOR├çA E LUZ" aria-haspopup="dialog" aria-expanded="false" aria-controls="pedido-drawer">4200213183</button><div class="ped-interno">ID ERP 6602</div><div class="ped-interno">interno 4500</div></td><td class="cliente"><span title="COMPANHIA PIRATININGA DE FOR├çA E LUZ">COMPANHIA PIRATININGA DE FOR├çA E LUZ</span></td><td class=""><span class="etapa-cell-wrap"><span class="etapa-tag etapa-done">Conclu├¡do</span><span class="etapa-agendamento">inspe├º├úo 2026-09-24</span></span></td><td class=""><span class="prazo-cell" title="Contract Date: 2026-08-29"><span class="prazo-data">2026-08-29</span></span></td><td class="num"><div class="qtd">65 de 65</div><div class="qtd-bar full"><span style="width: 100%;"></span></div></td><td class=""><span class="atraso">+26d (interno)</span></td><td class="col-acoes"><button type="button" class="btn-sec btn-acao">Editar</button></td></tr><tr class="clicavel "><td class=""><span class="badge badge-pend">Pendente</span></td><td class=""><button type="button" class="ped-num ped-link" aria-label="Ver detalhes do pedido 4200213182, cliente COMPANHIA PAULISTA DE FOR├çA E LUZ" aria-haspopup="dialog" aria-expanded="false" aria-controls="pedido-drawer">4200213182</button><div class="ped-interno">ID ERP 6601</div><div class="ped-interno">interno 4499</div></td><td class="cliente"><span title="COMPANHIA PAULISTA DE FOR├çA E LUZ">COMPANHIA PAULISTA DE FOR├çA E LUZ</span></td><td class=""><span class="etapa-cell-wrap"><span class="etapa-tag">Inspe├º├úo LEM</span><span class="etapa-agendamento">11d no LEM</span></span></td><td class=""><span class="prazo-cell" title="Contract Date: 2026-08-29"><span class="prazo-data">2026-08-29</span><span class="prazo-contagem prazo-vencido">vencido h├í 30d</span></span></td><td class="num"><div class="qtd">1230 de 1230</div><div class="qtd-bar full"><span style="width: 100%;"></span></div></td><td class="">-</td><td class="col-acoes"><button type="button" class="btn-sec btn-acao">Confirmar inspe├º├úo</button></td></tr><tr class="clicavel "><td class=""><span class="badge badge-pend">Pendente</span></td><td class=""><button type="button" class="ped-num ped-link" aria-label="Ver detalhes do pedido GDMECORP0012024PA, cliente EQUATORIAL PARA DISTRIBUIDORA DE ENERGIA S.A." aria-haspopup="dialog" aria-expanded="false" aria-controls="pedido-drawer">GDMECORP0012024PA</button><div class="ped-interno">ID ERP 6643</div><div class="ped-interno">interno 4541</div></td><td class="cliente"><span title="EQUATORIAL PARA DISTRIBUIDORA DE ENERGIA S.A.">EQUATORIAL PARA DISTRIBUIDORA DE ENERGIA S.A.</span></td><td class=""><span class="etapa-cell-wrap"><span class="etapa-tag">PCP / Planejamento</span></span></td><td class=""><span class="prazo-cell" title="Contract Date: 2026-09-01"><span class="prazo-data">2026-09-01</span><span class="prazo-contagem prazo-vencido">vencido h├í 27d</span></span></td><td class="num"><div class="qtd">6355 de 6355</div><div class="qtd-bar full"><span style="width: 100%;"></span></div></td><td class="">-</td><td class="col-acoes"><button type="button" class="btn-sec btn-acao">Confirmar PCP</button></td></tr><tr class="clicavel "><td class=""><span class="badge badge-ok">OTIF</span></td><td class=""><button type="button" class="ped-num ped-link" aria-label="Ver detalhes do pedido 4500156412, cliente RORAIMA ENERGIA S.A" aria-haspopup="dialog" aria-expanded="false" aria-controls="pedido-drawer">4500156412</button><div class="ped-interno">ID ERP 6607</div><div class="ped-interno">interno 4505</div></td><td class="cliente"><span title="RORAIMA ENERGIA S.A">RORAIMA ENERGIA S.A</span></td><td class=""><span class="etapa-cell-wrap"><span class="etapa-tag">Estoque</span><span class="etapa-agendamento">28d em estoque ┬À aguarda embarque</span></span></td><td class=""><span class="prazo-cell" title="Contract Date: 2026-09-07"><span class="prazo-data">2026-09-07</span></span></td><td class="num"><div class="qtd">1824 de 1824</div><div class="qtd-bar full"><span style="width: 100%;"></span></div></td><td class=""><span class="prazo-neutro">no prazo</span></td><td class="col-acoes"><button type="button" class="btn-sec btn-acao" disabled="" title="O embarque vir├í na pr├│xima atualiza├º├úo direta do JUND.">Aguarda embarque</button></td></tr><tr class="clicavel "><td class=""><span class="badge badge-pend">Pendente</span></td><td class=""><button type="button" class="ped-num ped-link" aria-label="Ver detalhes do pedido 5400120427, cliente COMPANHIA ESTADUAL DE DISTRIBUI├ç├âO DE ENERGIA EL├ëTRICA CEEE-D" aria-haspopup="dialog" aria-expanded="false" aria-controls="pedido-drawer">5400120427</button><div class="ped-interno">ID ERP 6604</div><div class="ped-interno">interno 4502</div></td><td class="cliente"><span title="COMPANHIA ESTADUAL DE DISTRIBUI├ç├âO DE ENERGIA EL├ëTRICA CEEE-D">COMPANHIA ESTADUAL DE DISTRIBUI├ç├âO DE ENERGIA EL├ëTRICA CEEE-D</span></td><td class=""><span class="etapa-cell-wrap"><span class="etapa-tag">Entrega</span><span class="etapa-agendamento">inspe├º├úo 2026-09-18</span></span></td><td class=""><span class="prazo-cell" title="Contract Date: 2026-09-10"><span class="prazo-data">2026-09-10</span><span class="prazo-contagem prazo-vencido">vencido h├í 18d</span></span></td><td class="num"><div class="qtd">1500 de 1500</div><div class="qtd-bar full"><span style="width: 100%;"></span></div></td><td class="">-</td><td class="col-acoes"><button type="button" class="btn-sec btn-acao">Confirmar entrega</button></td></tr><tr class="clicavel "><td class=""><span class="badge badge-pend">Pendente</span></td><td class=""><button type="button" class="ped-num ped-link" aria-label="Ver detalhes do pedido 5400120427, cliente COMPANHIA ESTADUAL DE DISTRIBUI├ç├âO DE ENERGIA EL├ëTRICA CEEE-D" aria-haspopup="dialog" aria-expanded="false" aria-controls="pedido-drawer">5400120427</button><div class="ped-interno">ID ERP 6509</div><div class="ped-interno">interno 4420</div></td><td class="cliente"><span title="COMPANHIA ESTADUAL DE DISTRIBUI├ç├âO DE ENERGIA EL├ëTRICA CEEE-D">COMPANHIA ESTADUAL DE DISTRIBUI├ç├âO DE ENERGIA EL├ëTRICA CEEE-D</span></td><td class=""><span class="etapa-cell-wrap"><span class="etapa-tag">PCP / Planejamento</span></span></td><td class=""><span class="prazo-cell" title="Contract Date: 2026-09-10"><span class="prazo-data">2026-09-10</span><span class="prazo-contagem prazo-vencido">vencido h├í 18d</span></span></td><td class="num"><div class="qtd">0 de 1500</div><div class="qtd-bar "><span style="width: 0%;"></span></div></td><td class="">-</td><td class="col-acoes"><button type="button" class="btn-sec btn-acao">Confirmar PCP</button></td></tr><tr class="clicavel "><td class=""><span class="badge badge-pend">Pendente</span></td><td class=""><button type="button" class="ped-num ped-link" aria-label="Ver detalhes do pedido 4500622373, cliente LIGHT SERVICOS DE ELETRICIDADE S.A" aria-haspopup="dialog" aria-expanded="false" aria-controls="pedido-drawer">4500622373</button><div class="ped-interno">ID ERP 6628</div><div class="ped-interno">interno 4526</div></td><td class="cliente"><span title="LIGHT SERVICOS DE ELETRICIDADE S.A">LIGHT SERVICOS DE ELETRICIDADE S.A</span></td><td class=""><span class="etapa-cell-wrap"><span class="etapa-tag">PCP / Planejamento</span></span></td><td class=""><span class="prazo-cell" title="Contract Date: 2026-09-19"><span class="prazo-data">2026-09-19</span><span class="prazo-contagem prazo-vencido">vencido h├í 9d</span></span></td><td class="num"><div class="qtd">6886 de 6886</div><div class="qtd-bar full"><span style="width: 100%;"></span></div></td><td class="">-</td><td class="col-acoes"><button type="button" class="btn-sec btn-acao">Confirmar PCP</button></td></tr><tr class="clicavel "><td class=""><span class="badge badge-pend">Pendente</span></td><td class=""><button type="button" class="ped-num ped-link" aria-label="Ver detalhes do pedido 4500622373, cliente LIGHT SERVICOS DE ELETRICIDADE S.A" aria-haspopup="dialog" aria-expanded="false" aria-controls="pedido-drawer">4500622373</button><div class="ped-interno">ID ERP 6627</div><div class="ped-interno">interno 4525</div></td><td class="cliente"><span title="LIGHT SERVICOS DE ELETRICIDADE S.A">LIGHT SERVICOS DE ELETRICIDADE S.A</span></td><td class=""><span class="etapa-cell-wrap"><span class="etapa-tag">PCP / Planejamento</span></span></td><td class=""><span class="prazo-cell" title="Contract Date: 2026-09-19"><span class="prazo-data">2026-09-19</span><span class="prazo-contagem prazo-vencido">vencido h├í 9d</span></span></td><td class="num"><div class="qtd">9800 de 9800</div><div class="qtd-bar full"><span style="width: 100%;"></span></div></td><td class="">-</td><td class="col-acoes"><button type="button" class="btn-sec btn-acao">Confirmar PCP</button></td></tr><tr class="clicavel "><td class=""><span class="badge badge-pend">Pendente</span></td><td class=""><button type="button" class="ped-num ped-link" aria-label="Ver detalhes do pedido 4500622373, cliente LIGHT SERVICOS DE ELETRICIDADE S.A" aria-haspopup="dialog" aria-expanded="false" aria-controls="pedido-drawer">4500622373</button><div class="ped-interno">ID ERP 6626</div><div class="ped-interno">interno 4524</div></td><td class="cliente"><span title="LIGHT SERVICOS DE ELETRICIDADE S.A">LIGHT SERVICOS DE ELETRICIDADE S.A</span></td><td class=""><span class="etapa-cell-wrap"><span class="etapa-tag">PCP / Planejamento</span></span></td><td class=""><span class="prazo-cell" title="Contract Date: 2026-09-19"><span class="prazo-data">2026-09-19</span><span class="prazo-contagem prazo-vencido">vencido h├í 9d</span></span></td><td class="num"><div class="qtd">9800 de 9800</div><div class="qtd-bar full"><span style="width: 100%;"></span></div></td><td class="">-</td><td class="col-acoes"><button type="button" class="btn-sec btn-acao">Confirmar PCP</button></td></tr><tr class="clicavel "><td class=""><span class="badge badge-pend">Pendente</span></td><td class=""><button type="button" class="ped-num ped-link" aria-label="Ver detalhes do pedido 4500622373, cliente LIGHT SERVICOS DE ELETRICIDADE S.A" aria-haspopup="dialog" aria-expanded="false" aria-controls="pedido-drawer">4500622373</button><div class="ped-interno">ID ERP 6621</div><div class="ped-interno">interno 4519</div></td><td class="cliente"><span title="LIGHT SERVICOS DE ELETRICIDADE S.A">LIGHT SERVICOS DE ELETRICIDADE S.A</span></td><td class=""><span class="etapa-cell-wrap"><span class="etapa-tag">PCP / Planejamento</span></span></td><td class=""><span class="prazo-cell" title="Contract Date: 2026-09-19"><span class="prazo-data">2026-09-19</span><span class="prazo-contagem prazo-vencido">vencido h├í 9d</span></span></td><td class="num"><div class="qtd">100 de 100</div><div class="qtd-bar full"><span style="width: 100%;"></span></div></td><td class="">-</td><td class="col-acoes"><button type="button" class="btn-sec btn-acao">Confirmar PCP</button></td></tr><tr class="clicavel "><td class=""><span class="badge badge-pend">Pendente</span></td><td class=""><button type="button" class="ped-num ped-link" aria-label="Ver detalhes do pedido 4500622373, cliente LIGHT SERVICOS DE ELETRICIDADE S.A" aria-haspopup="dialog" aria-expanded="false" aria-controls="pedido-drawer">4500622373</button><div class="ped-interno">ID ERP 6612</div><div class="ped-interno">interno 4510</div></td><td class="cliente"><span title="LIGHT SERVICOS DE ELETRICIDADE S.A">LIGHT SERVICOS DE ELETRICIDADE S.A</span></td><td class=""><span class="etapa-cell-wrap"><span class="etapa-tag">PCP / Planejamento</span></span></td><td class=""><span class="prazo-cell" title="Contract Date: 2026-09-19"><span class="prazo-data">2026-09-19</span><span class="prazo-contagem prazo-vencido">vencido h├í 9d</span></span></td><td class="num"><div class="qtd">7000 de 7000</div><div class="qtd-bar full"><span style="width: 100%;"></span></div></td><td class="">-</td><td class="col-acoes"><button type="button" class="btn-sec btn-acao">Confirmar PCP</button></td></tr><tr class="clicavel "><td class=""><span class="badge badge-pend">Pendente</span></td><td class=""><button type="button" class="ped-num ped-link" aria-label="Ver detalhes do pedido 4500622373, cliente LIGHT SERVICOS DE ELETRICIDADE S.A" aria-haspopup="dialog" aria-expanded="false" aria-controls="pedido-drawer">4500622373</button><div class="ped-interno">ID ERP 6611</div><div class="ped-interno">interno 4509</div></td><td class="cliente"><span title="LIGHT SERVICOS DE ELETRICIDADE S.A">LIGHT SERVICOS DE ELETRICIDADE S.A</span></td><td class=""><span class="etapa-cell-wrap"><span class="etapa-tag">PCP / Planejamento</span></span></td><td class=""><span class="prazo-cell" title="Contract Date: 2026-09-19"><span class="prazo-data">2026-09-19</span><span class="prazo-contagem prazo-vencido">vencido h├í 9d</span></span></td><td class="num"><div class="qtd">9029 de 9029</div><div class="qtd-bar full"><span style="width: 100%;"></span></div></td><td class="">-</td><td class="col-acoes"><button type="button" class="btn-sec btn-acao">Confirmar PCP</button></td></tr><tr class="clicavel "><td class=""><span class="badge badge-pend">Pendente</span></td><td class=""><button type="button" class="ped-num ped-link" aria-label="Ver detalhes do pedido 4500622373, cliente LIGHT SERVICOS DE ELETRICIDADE S.A" aria-haspopup="dialog" aria-expanded="false" aria-controls="pedido-drawer">4500622373</button><div class="ped-interno">ID ERP 6610</div><div class="ped-interno">interno 4508</div></td><td class="cliente"><span title="LIGHT SERVICOS DE ELETRICIDADE S.A">LIGHT SERVICOS DE ELETRICIDADE S.A</span></td><td class=""><span class="etapa-cell-wrap"><span class="etapa-tag">PCP / Planejamento</span></span></td><td class=""><span class="prazo-cell" title="Contract Date: 2026-09-19"><span class="prazo-data">2026-09-19</span><span class="prazo-contagem prazo-vencido">vencido h├í 9d</span></span></td><td class="num"><div class="qtd">9800 de 9800</div><div class="qtd-bar full"><span style="width: 100%;"></span></div></td><td class="">-</td><td class="col-acoes"><button type="button" class="btn-sec btn-acao">Confirmar PCP</button></td></tr><tr class="clicavel "><td class=""><span class="badge badge-pend">Pendente</span></td><td class=""><button type="button" class="ped-num ped-link" aria-label="Ver detalhes do pedido 4500622373, cliente LIGHT SERVICOS DE ELETRICIDADE S.A" aria-haspopup="dialog" aria-expanded="false" aria-controls="pedido-drawer">4500622373</button><div class="ped-interno">ID ERP 6609</div><div class="ped-interno">interno 4507</div></td><td class="cliente"><span title="LIGHT SERVICOS DE ELETRICIDADE S.A">LIGHT SERVICOS DE ELETRICIDADE S.A</span></td><td class=""><span class="etapa-cell-wrap"><span class="etapa-tag">PCP / Planejamento</span></span></td><td class=""><span class="prazo-cell" title="Contract Date: 2026-09-19"><span class="prazo-data">2026-09-19</span><span class="prazo-contagem prazo-vencido">vencido h├í 9d</span></span></td><td class="num"><div class="qtd">8400 de 8400</div><div class="qtd-bar full"><span style="width: 100%;"></span></div></td><td class="">-</td><td class="col-acoes"><button type="button" class="btn-sec btn-acao">Confirmar PCP</button></td></tr><tr class="clicavel "><td class=""><span class="badge badge-pend">Pendente</span></td><td class=""><button type="button" class="ped-num ped-link" aria-label="Ver detalhes do pedido 4500622373, cliente LIGHT SERVICOS DE ELETRICIDADE S.A" aria-haspopup="dialog" aria-expanded="false" aria-controls="pedido-drawer">4500622373</button><div class="ped-interno">ID ERP 6608</div><div class="ped-interno">interno 4506</div></td><td class="cliente"><span title="LIGHT SERVICOS DE ELETRICIDADE S.A">LIGHT SERVICOS DE ELETRICIDADE S.A</span></td><td class=""><span class="etapa-cell-wrap"><span class="etapa-tag">Produ├º├úo</span></span></td><td class=""><span class="prazo-cell" title="Contract Date: 2026-09-19"><span class="prazo-data">2026-09-19</span><span class="prazo-contagem prazo-vencido">vencido h├í 9d</span></span></td><td class="num"><div class="qtd">11398 de 11398</div><div class="qtd-bar full"><span style="width: 100%;"></span></div></td><td class="">-</td><td class="col-acoes"><button type="button" class="btn-sec btn-acao">Confirmar produ├º├úo</button></td></tr><tr class="clicavel "><td class=""><span class="badge badge-pend">Pendente</span></td><td class=""><button type="button" class="ped-num ped-link" aria-label="Ver detalhes do pedido 4500622373, cliente LIGHT SERVICOS DE ELETRICIDADE S.A" aria-haspopup="dialog" aria-expanded="false" aria-controls="pedido-drawer">4500622373</button><div class="ped-interno">ID ERP 6603</div><div class="ped-interno">interno 4501</div></td><td class="cliente"><span title="LIGHT SERVICOS DE ELETRICIDADE S.A">LIGHT SERVICOS DE ELETRICIDADE S.A</span></td><td class=""><span class="etapa-cell-wrap"><span class="etapa-tag">PCP / Planejamento</span></span></td><td class=""><span class="prazo-cell" title="Contract Date: 2026-09-19"><span class="prazo-data">2026-09-19</span><span class="prazo-contagem prazo-vencido">vencido h├í 9d</span></span></td><td class="num"><div class="qtd">10000 de 10000</div><div class="qtd-bar full"><span style="width: 100%;"></span></div></td><td class="">-</td><td class="col-acoes"><button type="button" class="btn-sec btn-acao">Confirmar PCP</button></td></tr><tr class="clicavel "><td class=""><span class="badge badge-pend">Pendente</span></td><td class=""><button type="button" class="ped-num ped-link" aria-label="Ver detalhes do pedido 4200211106, cliente COMPANHIA PIRATININGA DE FOR├çA E LUZ" aria-haspopup="dialog" aria-expanded="false" aria-controls="pedido-drawer">4200211106</button><div class="ped-interno">ID ERP 6600</div><div class="ped-interno">interno 4498</div></td><td class="cliente"><span title="COMPANHIA PIRATININGA DE FOR├çA E LUZ">COMPANHIA PIRATININGA DE FOR├çA E LUZ</span></td><td class=""><span class="etapa-cell-wrap"><span class="etapa-tag">PCP / Planejamento</span></span></td><td class=""><span class="prazo-cell" title="Contract Date: 2026-09-19"><span class="prazo-data">2026-09-19</span><span class="prazo-contagem prazo-vencido">vencido h├í 9d</span></span></td><td class="num"><div class="qtd">3000 de 3000</div><div class="qtd-bar full"><span style="width: 100%;"></span></div></td><td class="">-</td><td class="col-acoes"><button type="button" class="btn-sec btn-acao">Confirmar PCP</button></td></tr><tr class="clicavel "><td class=""><span class="badge badge-pend">Pendente</span></td><td class=""><button type="button" class="ped-num ped-link" aria-label="Ver detalhes do pedido 3102364(23065), cliente ENERGISA MATO GROSSO DO SUL -  DISTRIBUIDORA DE ENERGIA SA" aria-haspopup="dialog" aria-expanded="false" aria-controls="pedido-drawer">3102364(23065)</button><div class="ped-interno">ID ERP 6625</div><div class="ped-interno">interno 4523</div></td><td class="cliente"><span title="ENERGISA MATO GROSSO DO SUL -  DISTRIBUIDORA DE ENERGIA SA">ENERGISA MATO GROSSO DO SUL -  DISTRIBUIDORA DE ENERGIA SA</span></td><td class=""><span class="etapa-cell-wrap"><span class="etapa-tag">PCP / Planejamento</span></span></td><td class=""><span class="prazo-cell" title="Contract Date: 2026-09-20"><span class="prazo-data">2026-09-20</span><span class="prazo-contagem prazo-vencido">vencido h├í 8d</span></span></td><td class="num"><div class="qtd">500 de 500</div><div class="qtd-bar full"><span style="width: 100%;"></span></div></td><td class="">-</td><td class="col-acoes"><button type="button" class="btn-sec btn-acao">Confirmar PCP</button></td></tr><tr class="clicavel "><td class=""><span class="badge badge-pend">Pendente</span></td><td class=""><button type="button" class="ped-num ped-link" aria-label="Ver detalhes do pedido 3102360(33768), cliente ENERGISA MATO GROSSO - DISTRIBUIDORA DE ENERGIA S.A." aria-haspopup="dialog" aria-expanded="false" aria-controls="pedido-drawer">3102360(33768)</button><div class="ped-interno">ID ERP 6620</div><div class="ped-interno">interno 4518</div></td><td class="cliente"><span title="ENERGISA MATO GROSSO - DISTRIBUIDORA DE ENERGIA S.A.">ENERGISA MATO GROSSO - DISTRIBUIDORA DE ENERGIA S.A.</span></td><td class=""><span class="etapa-cell-wrap"><span class="etapa-tag">PCP / Planejamento</span></span></td><td class=""><span class="prazo-cell" title="Contract Date: 2026-09-20"><span class="prazo-data">2026-09-20</span><span class="prazo-contagem prazo-vencido">vencido h├í 8d</span></span></td><td class="num"><div class="qtd">2000 de 2000</div><div class="qtd-bar full"><span style="width: 100%;"></span></div></td><td class="">-</td><td class="col-acoes"><button type="button" class="btn-sec btn-acao">Confirmar PCP</button></td></tr><tr class="clicavel "><td class=""><span class="badge badge-pend">Pendente</span></td><td class=""><button type="button" class="ped-num ped-link" aria-label="Ver detalhes do pedido 5400121894, cliente EQUATORIAL GOIAS DISTRIBUIDORA DE ENERGIA S/A" aria-haspopup="dialog" aria-expanded="false" aria-controls="pedido-drawer">5400121894</button><div class="ped-interno">ID ERP 6631</div><div class="ped-interno">interno 4529</div></td><td class="cliente"><span title="EQUATORIAL GOIAS DISTRIBUIDORA DE ENERGIA S/A">EQUATORIAL GOIAS DISTRIBUIDORA DE ENERGIA S/A</span></td><td class=""><span class="etapa-cell-wrap"><span class="etapa-tag">PCP / Planejamento</span></span></td><td class=""><span class="prazo-cell" title="Contract Date: 2026-09-25"><span class="prazo-data">2026-09-25</span><span class="prazo-contagem prazo-vencido">vencido h├í 3d</span></span></td><td class="num"><div class="qtd">5870 de 5870</div><div class="qtd-bar full"><span style="width: 100%;"></span></div></td><td class="">-</td><td class="col-acoes"><button type="button" class="btn-sec btn-acao">Confirmar PCP</button></td></tr><tr class="clicavel "><td class=""><span class="badge badge-pend">Pendente</span></td><td class=""><button type="button" class="ped-num ped-link" aria-label="Ver detalhes do pedido 5400121835, cliente EQUATORIAL MARANHAO DISTRIBUIDORA DE ENERGIA S.A" aria-haspopup="dialog" aria-expanded="false" aria-controls="pedido-drawer">5400121835</button><div class="ped-interno">ID ERP 6630</div><div class="ped-interno">interno 4528</div></td><td class="cliente"><span title="EQUATORIAL MARANHAO DISTRIBUIDORA DE ENERGIA S.A">EQUATORIAL MARANHAO DISTRIBUIDORA DE ENERGIA S.A</span></td><td class=""><span class="etapa-cell-wrap"><span class="etapa-tag">PCP / Planejamento</span></span></td><td class=""><span class="prazo-cell" title="Contract Date: 2026-09-25"><span class="prazo-data">2026-09-25</span><span class="prazo-contagem prazo-vencido">vencido h├í 3d</span></span></td><td class="num"><div class="qtd">1726 de 1726</div><div class="qtd-bar full"><span style="width: 100%;"></span></div></td><td class="">-</td><td class="col-acoes"><button type="button" class="btn-sec btn-acao">Confirmar PCP</button></td></tr></tbody></table></div><div class="pager"><label>Linhas por p├ígina <select><option value="25">25</option><option value="50">50</option><option value="100">100</option><option value="200">200</option></select></label><span class="pager-info">1ÔÇô25 de 656</span><div class="pager-btns"><button disabled="">Anterior</button><button>Pr├│xima</button></div></div></section></div></div></div></div>
+    <script type="module" src="/src/main.jsx?t=1790256528790"></script>
+  
+
+</body></html>

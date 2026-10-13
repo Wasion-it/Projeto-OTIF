@@ -14,3 +14,14 @@ typing_extensions>=4.12
 # Conexao READ-ONLY com o Jundsoft (SQL Server). Necessario quando ERP_SOURCE=sqlserver.
 # Usa o ODBC Driver do Windows (aqui: driver legado "SQL Server").
 pyodbc==5.2.0
+
+# Migrations do banco proprio (schema versionado). Use no lugar de create_all
+# em producao: `alembic upgrade head`.
+alembic==1.14.0
+
+# Driver do PostgreSQL (banco proprio recomendado para producao). Instale quando
+# DATABASE_URL apontar para postgres. Ex.: postgresql+psycopg://user:pass@host/otif
+psycopg[binary]==3.2.3
+
+# --- Desenvolvimento / testes ---
+pytest==8.3.4

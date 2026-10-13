@@ -1,5 +1,8 @@
+import { CaretRight } from "@phosphor-icons/react";
+
 export default function MetricCard({
   titulo,
+  icone = null,
   valor,
   sufixo = "",
   tom = "neutro",
@@ -20,30 +23,31 @@ export default function MetricCard({
     .filter(Boolean)
     .join(" ");
 
-  const handleKey = clicavel
-    ? (e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onClick();
-        }
-      }
-    : undefined;
-
-  return (
-    <div
-      className={cls}
-      onClick={onClick}
-      onKeyDown={handleKey}
-      role={clicavel ? "button" : undefined}
-      tabIndex={clicavel ? 0 : undefined}
-      aria-pressed={clicavel ? ativo : undefined}
-    >
-      <div className="metric-titulo">{titulo}</div>
+  const conteudo = (
+    <>
+      <div className="metric-titulo">
+        {icone}
+        {titulo}
+      </div>
       <div className="metric-valor">
         {valor}
         {sufixo && <span className="metric-sufixo">{sufixo}</span>}
       </div>
       {rodape && <div className="metric-rodape">{rodape}</div>}
-    </div>
+      {clicavel && (
+        <CaretRight className="risk-abrir" size={16} weight="bold" aria-hidden="true" />
+      )}
+    </>
   );
+
+  // Um tile que navega é um botão de verdade: teclado, foco e semântica nativos.
+  if (clicavel) {
+    return (
+      <button type="button" className={cls} onClick={onClick} aria-current={ativo || undefined}>
+        {conteudo}
+      </button>
+    );
+  }
+
+  return <div className={cls}>{conteudo}</div>;
 }

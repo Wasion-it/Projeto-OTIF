@@ -5,6 +5,7 @@ Por padrao roda em SQLite (mock), mas basta trocar DATABASE_URL para apontar
 para o Postgres da aplicacao em producao.
 """
 from functools import lru_cache
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -12,20 +13,24 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-    # Banco PROPRIO da aplicacao (guarda dados sincronizados do ERP + inputs manuais).
-    # Mock: SQLite. Producao sugerida: postgresql+psycopg://user:pass@host:5432/otif
+    # Banco PROPRIO da aplicacao (ancoras de PV01_ID + dados manuais).
+    # Campos ERP legados permanecem apenas para rollback e nao sao fonte no modo direct.
     database_url: str = "sqlite:///./otif.db"
 
-    # Origem dos dados do ERP. "mock" gera dados fake; "sqlserver" leria o Jundsoft.
-    erp_source: str = "mock"
+    # Origem e modo de leitura do ERP. Em sqlserver/direct a API consulta o JUND
+    # por geracao logica e mescla somente os dados manuais do banco proprio.
+    erp_source: Literal["mock", "sqlserver"] = "mock"
+    erp_read_mode: Literal["direct", "snapshot"] = "direct"
+    erp_lookback_months: int = 12
+    erp_cache_ttl_seconds: int = 10
+    erp_error_backoff_seconds: int = 15
 
-    # Prazo de entrega (SLA) em dias corridos a partir da data solicitada
-    # (digitacao do pedido). On Time = entrega <= data_solicitada + prazo.
-    prazo_entrega_dias: int = 60
-
-    # Faltando este numero de dias (ou menos) para o prazo, o pedido pendente
-    # entra em "atencao" no painel.
+    # Faltando este numero de dias (ou menos) para o Contract Date, o pedido
+    # pendente entra em "atencao" no painel.
     dias_alerta_prazo: int = 7
+
+    # Meta de OTIF (%) padrao. Usada quando ainda nao ha parametros salvos no banco.
+    meta_otif: float = 95.0
 
     # Conexao READ-ONLY com o Jundsoft (SQL Server). Usada quando erp_source=sqlserver.
     jundsoft_host: str = ""          # ex.: 10.10.1.5,52702  (host,porta)
