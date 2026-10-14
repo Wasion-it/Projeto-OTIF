@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { FloppyDisk, WarningCircle } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { api } from "../api.js";
 
@@ -45,86 +44,60 @@ export default function Ajustes({ onConfigChange }) {
     }
   }
 
-  if (carregando) return <p className="vazio">Carregando parâmetros…</p>;
+  if (carregando) return <p className="txt-sec">Carregando parâmetros…</p>;
 
   return (
-    <>
+    <form className="form form-estreito" onSubmit={salvarParametros}>
       {erro && (
-        <div className="erro" role="alert">
-          <WarningCircle className="ico" size={18} weight="fill" aria-hidden="true" />
+        <div className="faixa-erro" role="alert">
           <span>{erro}</span>
         </div>
       )}
 
-      <div className="ajustes-grid">
-        <section className="panel" aria-labelledby="ajustes-meta">
-          <div className="panel-head">
-            <h3 id="ajustes-meta">Meta e alertas</h3>
-          </div>
-          <form className="form-grid" onSubmit={salvarParametros}>
-            <label htmlFor="cfg-meta">
-              Meta de OTIF
-              <span className="campo-unidade">
-                <input
-                  id="cfg-meta"
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.1"
-                  value={meta}
-                  onChange={(e) => setMeta(e.target.value)}
-                  aria-describedby="cfg-meta-ajuda"
-                  required
-                />
-                <span aria-hidden="true">%</span>
-              </span>
-              <span className="campo-ajuda" id="cfg-meta-ajuda">
-                Percentual que define verde ou vermelho nos indicadores.
-              </span>
-            </label>
-            <label htmlFor="cfg-dias">
-              Alertar antes do Contract Date
-              <span className="campo-unidade">
-                <input
-                  id="cfg-dias"
-                  type="number"
-                  min="0"
-                  max="365"
-                  value={diasAlerta}
-                  onChange={(e) => setDiasAlerta(e.target.value)}
-                  aria-describedby="cfg-dias-ajuda"
-                  required
-                />
-                <span aria-hidden="true">dias</span>
-              </span>
-              <span className="campo-ajuda" id="cfg-dias-ajuda">
-                Pedidos pendentes nessa janela entram em Atenção.
-              </span>
-            </label>
-            <div className="form-acoes">
-              <button className="btn" type="submit" disabled={salvando}>
-                <FloppyDisk className="ico" size={16} weight="bold" aria-hidden="true" />
-                {salvando ? "Salvando…" : "Salvar parâmetros"}
-              </button>
-            </div>
-          </form>
-        </section>
+      <label className="campo">
+        <span className="campo-rotulo">Meta de OTIF (%)</span>
+        <input
+          type="number"
+          min="0"
+          max="100"
+          step="0.1"
+          value={meta}
+          onChange={(e) => setMeta(e.target.value)}
+          aria-describedby="cfg-meta-ajuda"
+          required
+        />
+        <span className="campo-ajuda" id="cfg-meta-ajuda">
+          Abaixo dela, o OTIF aparece em vermelho na Visão geral.
+        </span>
+      </label>
 
-        <section className="panel config-note" aria-labelledby="fonte-contract-date">
-          <div className="panel-head">
-            <h3 id="fonte-contract-date">De onde vem o prazo</h3>
-          </div>
-          <p>
-            O prazo oficial é o <strong>Contract Date informado pelo comercial no pedido do
-            JUND</strong>. Ele não é calculado a partir da data de digitação e não usa SLA
-            como alternativa.
-          </p>
-          <p>
-            Pedidos sem uma data válida ficam sinalizados para correção no JUND e não entram
-            no cálculo de On Time ou OTIF.
-          </p>
-        </section>
+      <label className="campo">
+        <span className="campo-rotulo">Alertar antes do Contract Date (dias)</span>
+        <input
+          type="number"
+          min="0"
+          max="365"
+          value={diasAlerta}
+          onChange={(e) => setDiasAlerta(e.target.value)}
+          aria-describedby="cfg-dias-ajuda"
+          required
+        />
+        <span className="campo-ajuda" id="cfg-dias-ajuda">
+          Pedidos pendentes nessa janela entram em Atenção.
+        </span>
+      </label>
+
+      <p className="txt-sec">
+        O prazo oficial é o Contract Date informado pelo comercial no pedido do JUND. Ele não é
+        calculado a partir da digitação. Pedidos sem essa data ficam fora de On Time e OTIF até a
+        correção.
+      </p>
+
+      <div className="modal-acoes form-acoes-esq">
+        <button className="btn btn-pri" type="submit" disabled={salvando}>
+          {salvando ? "Salvando…" : "Salvar parâmetros"}
+        </button>
       </div>
-    </>
+    </form>
   );
 }

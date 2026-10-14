@@ -94,10 +94,12 @@ def avaliar_processo(pedido: Pedido, conf) -> dict:
 
     A etapa atual e sempre a primeira lacuna do fluxo. Isso impede que uma data
     posterior preenchida por engano pule Comercial ou qualquer etapa anterior.
-    O agendamento Comercial pode acontecer antes da Producao. O LEM so inicia
-    quando as duas condicoes existem; seu marco zero e a data mais tardia entre
-    o agendamento e o fim real da Producao. Toda espera anterior fica fora dos
-    dias no LEM e do calculo de gargalo.
+    O agendamento Comercial pode acontecer antes da Producao. O marco zero da
+    contagem do LEM e a data mais tardia entre o agendamento e o fim real da
+    Producao; toda espera anterior fica fora dos dias no LEM e do gargalo. A
+    inspecao pode ser registrada antes desse marco (antecipada): nesse caso o
+    LEM conta 0 dias. `lem_aguardando_inicio` apenas informa que a data
+    agendada ainda nao chegou; nao bloqueia o registro.
     """
     etapa = pedido.etapa
     hoje = data_operacional()

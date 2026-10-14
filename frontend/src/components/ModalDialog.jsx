@@ -16,6 +16,7 @@ export default function ModalDialog({
   subtitle,
   busy = false,
   onClose,
+  largo = false,
   children,
 }) {
   const dialogRef = useRef(null);
@@ -92,7 +93,7 @@ export default function ModalDialog({
       }}
     >
       <div
-        className="modal"
+        className={`modal ${largo ? "modal-largo" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -100,8 +101,10 @@ export default function ModalDialog({
         tabIndex={-1}
         ref={dialogRef}
       >
-        <h3 id={titleId}>{title}</h3>
-        {subtitle && <div className="modal-sub">{subtitle}</div>}
+        <h2 id={titleId} className="modal-titulo">
+          {title}
+        </h2>
+        {subtitle && <p className="modal-sub">{subtitle}</p>}
         {children}
       </div>
     </div>

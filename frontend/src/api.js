@@ -53,6 +53,7 @@ function req(path, options = {}) {
 export const api = {
   health: () => req(`/health`),
   metricas: (filtros) => req(`/metrics/otif${qs(filtros)}`),
+  processo: (filtros) => req(`/metrics/processo${qs(filtros)}`),
   tendencia: (filtros) => req(`/metrics/tendencia${qs(filtros)}`),
   clientes: (filtros) => req(`/metrics/clientes${qs(filtros)}`),
   pedidos: (filtros) => req(`/pedidos${qs(filtros)}`),
@@ -97,23 +98,6 @@ export const api = {
     }),
   removerEtapa: (pedidoId) => req(`/etapas/${pedidoId}`, { method: "DELETE" }),
 };
-
-export const ETAPAS = [
-  { chave: "pedido", label: "Pedido" },
-  { chave: "pcp", label: "PCP / Planejamento" },
-  { chave: "producao", label: "Produção" },
-  { chave: "comercial", label: "Comercial / Agendamento" },
-  { chave: "lem", label: "Inspeção LEM" },
-  { chave: "faturamento", label: "Faturamento" },
-  { chave: "estoque", label: "Estoque" },
-  { chave: "expedicao", label: "Expedição" },
-  { chave: "entrega", label: "Entrega" },
-];
-
-export function etapaLabel(chave) {
-  if (chave === "concluido") return "Concluído";
-  return ETAPAS.find((e) => e.chave === chave)?.label || chave;
-}
 
 export const MOTIVOS = [
   { value: "falta_estoque", label: "Falta de estoque" },

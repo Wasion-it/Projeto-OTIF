@@ -156,3 +156,49 @@ def test_paginar_vazio():
     assert itens == []
     assert total == 0
     assert total_paginas == 1
+
+
+def test_filtrar_por_etapa_atual():
+    from app.ordenacao import filtrar_resultados
+    from conftest import make_etapa
+
+    no_pcp = _resultado(1, "PED-1", "X", date.today())
+    pedido_producao = make_pedido(
+        pedido_id=2,
+        numero="PED-2",
+        data_solicitada=date.today(),
+        contract_date=CONTRACT_DATE_PADRAO,
+        etapa=make_etapa(pcp_data=date(2026, 1, 2)),
+    )
+    na_producao = avaliar_pedido(pedido_producao)
+
+    assert no_pcp.processo["etapa_atual"] == "pcp"
+    assert na_producao.processo["etapa_atual"] == "producao"
+
+    filtrados = filtrar_resultados([no_pcp, na_producao], etapa="producao")
+    assert [r.numero for r in filtrados] == ["PED-2"]
+
+
+def test_filtrar_etapa_desconhecida_e_ignorada():
+    from app.ordenacao import filtrar_resultados
+
+    resultado = _resultado(1, "PED-1", "X", date.today())
+    assert filtrar_resultados([resultado], etapa="inexistente") == [resultado]
+    assert filtrar_resultados([resultado], etapa=None) == [resultado]
+
+
+def test_filtrar_combina_status_e_etapa():
+    from app.ordenacao import filtrar_resultados
+
+    pendente = _resultado(1, "PED-1", "X", date.today())
+    otif = _resultado(
+        2,
+        "PED-2",
+        "X",
+        date(2026, 1, 10),
+        conf=make_confirmacao(date(2026, 1, 20)),
+    )
+    assert filtrar_resultados([pendente, otif], status="otif", etapa="producao") == []
+    assert filtrar_resultados([pendente, otif], status="pendente", etapa="pcp") == [
+        pendente
+    ]

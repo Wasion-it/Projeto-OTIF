@@ -1,13 +1,17 @@
+import { ETAPAS_FILTRO } from "./etapas.js";
+
 export const FILTROS_PEDIDOS_VAZIOS = Object.freeze({
   data_ini: "",
   data_fim: "",
   cliente: "",
   status: "",
   situacao_prazo: "",
+  etapa: "",
 });
 
 const STATUS_VALIDOS = new Set(["otif", "falha", "pendente", "sem_contract_date"]);
 const SITUACOES_VALIDAS = new Set(["no_prazo", "atencao", "vencido"]);
+const ETAPAS_VALIDAS = new Set([...ETAPAS_FILTRO.map((e) => e.chave), "concluido"]);
 
 export function normalizarFiltrosPedidos(filtros = {}) {
   const status = STATUS_VALIDOS.has(filtros.status) ? filtros.status : "";
@@ -25,6 +29,7 @@ export function normalizarFiltrosPedidos(filtros = {}) {
     cliente: String(filtros.cliente || "").trim(),
     status: statusNormalizado,
     situacao_prazo: situacaoPrazo,
+    etapa: ETAPAS_VALIDAS.has(filtros.etapa) ? filtros.etapa : "",
   };
 }
 
@@ -36,6 +41,7 @@ export function temFiltrosPedidos(filtros) {
   return Object.keys(FILTROS_PEDIDOS_VAZIOS).some((chave) => Boolean(filtros[chave]));
 }
 
+// Recorte comum a todas as telas (período de digitação e cliente).
 export function filtrosGerais(filtros) {
   return {
     data_ini: filtros.data_ini,

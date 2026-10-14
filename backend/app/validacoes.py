@@ -99,8 +99,8 @@ def validar_etapas(
 
     A data agendada pode estar no futuro e o Comercial pode registrá-la antes
     do fim da Producao. Todas as demais datas representam fatos concluidos e
-    nao podem estar no futuro. O LEM exige agenda e Producao concluida; seu
-    marco inicial e a mais tardia dessas duas datas.
+    nao podem estar no futuro. O LEM exige agenda e Producao concluida, mas a
+    inspecao pode acontecer antes ou depois da data agendada.
     """
     hoje = _hoje(hoje)
 
@@ -173,11 +173,12 @@ def validar_etapas(
             raise ValidacaoError(
                 "Conclua a Producao antes de concluir o LEM."
             )
-        inicio_lem = max(inspecao_agendada_data, producao_fim)
-        if lem_data < inicio_lem:
+        # A inspecao pode ser antecipada em relacao a data agendada, mas nao
+        # pode acontecer antes do fim da Producao.
+        if lem_data < producao_fim:
             raise ValidacaoError(
                 f"A data da Inspecao LEM ({lem_data}) nao pode ser anterior ao "
-                f"inicio do LEM ({inicio_lem}), definido pela agenda e Producao."
+                f"fim da Producao ({producao_fim})."
             )
 
     if embarque_data is not None:

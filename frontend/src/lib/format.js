@@ -2,13 +2,6 @@
 // A meta efetiva vem de GET /config (tela Ajustes).
 export const META_OTIF_PADRAO = 95;
 
-// Tom (cor) de um percentual conforme a meta. Verde >= meta, amarelo >= 85, senao vermelho.
-export function tom(pct, meta = META_OTIF_PADRAO) {
-  if (pct >= meta) return "bom";
-  if (pct >= 85) return "medio";
-  return "ruim";
-}
-
 export function fmtPct(n) {
   return Number(n).toLocaleString("pt-BR", { maximumFractionDigits: 1 });
 }
@@ -18,14 +11,14 @@ export function fmtInteiro(n) {
 }
 
 export function formatarNotaFiscal(numero, serie) {
-  if (!numero) return "-";
+  if (!numero) return "—";
   return serie ? `NF ${numero} · série ${serie}` : `NF ${numero}`;
 }
 
 // Data/hora do ERP em formato de tabela: sem segundos e com ano de 2 dígitos.
 // Segundos são ruído numa grade e custam ~25% da largura da célula.
 export function fmtDataHoraCurta(iso) {
-  if (!iso) return "-";
+  if (!iso) return "—";
   const data = new Date(iso);
   if (Number.isNaN(data.getTime())) return iso;
   const dia = data.toLocaleDateString("pt-BR", {
@@ -39,7 +32,7 @@ export function fmtDataHoraCurta(iso) {
 
 // Data/hora completa, para o drawer e o CSV, onde há espaço e rastreabilidade importa.
 export function fmtDataHora(iso) {
-  if (!iso) return "-";
+  if (!iso) return "—";
   const data = new Date(iso);
   if (Number.isNaN(data.getTime())) return iso;
   return data.toLocaleString("pt-BR", {
@@ -49,6 +42,14 @@ export function fmtDataHora(iso) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+// "2026-09-24" -> "24/09/26", para colunas de tabela.
+export function fmtDataCurta(dataIso) {
+  if (!dataIso) return "—";
+  const [ano, mes, dia] = String(dataIso).slice(0, 10).split("-");
+  if (!ano || !mes || !dia) return dataIso;
+  return `${dia}/${mes}/${ano.slice(2)}`;
 }
 
 // "2026-09-24" -> "24/09/2026". Trabalha com a string ISO para não introduzir

@@ -200,11 +200,6 @@ class EtapaProcesso(Base):
             name="ck_etapa_comercial_agendamento_par",
         ),
         CheckConstraint(
-            "lem_data IS NULL OR inspecao_agendada_data IS NULL OR "
-            "lem_data >= inspecao_agendada_data",
-            name="ck_etapa_lem_apos_agendamento",
-        ),
-        CheckConstraint(
             "lem_data IS NULL OR "
             "(producao_fim IS NOT NULL AND lem_data >= producao_fim)",
             name="ck_etapa_lem_apos_producao",

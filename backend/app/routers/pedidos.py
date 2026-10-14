@@ -9,7 +9,13 @@ from sqlalchemy.orm import Session
 
 from ..avaliacao import carregar_e_avaliar
 from ..database import get_db
-from ..ordenacao import ORDER_PADRAO, SORT_PADRAO, ordenar_resultados, paginar
+from ..ordenacao import (
+    ORDER_PADRAO,
+    SORT_PADRAO,
+    filtrar_resultados,
+    ordenar_resultados,
+    paginar,
+)
 from ..schemas import PedidosPage
 
 router = APIRouter(prefix="/pedidos", tags=["pedidos"])
@@ -25,6 +31,11 @@ def listar_pedidos(
     ),
     situacao_prazo: str | None = Query(
         None, description="Filtra pendentes: no_prazo | atencao | vencido"
+    ),
+    etapa: str | None = Query(
+        None,
+        description="Etapa atual: pcp | producao | comercial | lem | faturamento | "
+        "estoque | expedicao | entrega | concluido",
     ),
     sort: str = Query(SORT_PADRAO, description="Coluna de ordenacao"),
     order: str = Query(ORDER_PADRAO, pattern="^(asc|desc)$", description="asc | desc"),
@@ -46,10 +57,12 @@ def listar_pedidos(
         force_refresh=force_refresh,
     )
 
-    if status:
-        resultados = [r for r in resultados if r.status == status]
-    if situacao_prazo:
-        resultados = [r for r in resultados if r.situacao_prazo == situacao_prazo]
+    resultados = filtrar_resultados(
+        resultados,
+        status=status,
+        situacao_prazo=situacao_prazo,
+        etapa=etapa,
+    )
 
     resultados = ordenar_resultados(resultados, sort, order)
     pagina, total, total_paginas = paginar(resultados, page, page_size)

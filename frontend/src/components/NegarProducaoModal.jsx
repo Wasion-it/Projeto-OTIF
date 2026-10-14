@@ -17,7 +17,6 @@ export default function NegarProducaoModal({ item, onClose, onSaved }) {
       setErro("Informe o motivo da negativa de produção.");
       return;
     }
-
     setErro(null);
     setSalvando(true);
     try {
@@ -41,17 +40,14 @@ export default function NegarProducaoModal({ item, onClose, onSaved }) {
       busy={salvando}
       onClose={onClose}
     >
-      <div className="modal-contract-alert negativa-modal-info">
-        <strong>O pedido continuará no PCP</strong>
-        <span>
-          A negativa ficará no histórico. O PCP poderá confirmar novamente quando a
-          restrição for resolvida.
-        </span>
-      </div>
+      <p className="txt-sec">
+        O pedido continua no PCP e a negativa fica no histórico. Confirme o PCP quando a
+        restrição for resolvida.
+      </p>
 
-      <form onSubmit={salvar}>
-        <label>
-          Motivo da negativa
+      <form onSubmit={salvar} className="form">
+        <label className="campo">
+          <span className="campo-rotulo">Motivo da negativa</span>
           <textarea
             rows={4}
             maxLength={2000}
@@ -62,8 +58,8 @@ export default function NegarProducaoModal({ item, onClose, onSaved }) {
           />
         </label>
 
-        <label>
-          Quando a produção poderá ser feita?
+        <label className="campo">
+          <span className="campo-rotulo">Quando a produção poderá ser feita</span>
           <input
             type="date"
             min={processo.data_operacional || undefined}
@@ -73,23 +69,23 @@ export default function NegarProducaoModal({ item, onClose, onSaved }) {
           />
         </label>
 
-        <label>
-          Usuário
-          <input
-            value={usuario}
-            required
-            onChange={(event) => setUsuario(event.target.value)}
-          />
+        <label className="campo">
+          <span className="campo-rotulo">Usuário</span>
+          <input value={usuario} required onChange={(event) => setUsuario(event.target.value)} />
         </label>
 
-        {erro && <div className="erro" role="alert">{erro}</div>}
+        {erro && (
+          <p className="msg-erro" role="alert">
+            {erro}
+          </p>
+        )}
 
         <div className="modal-acoes">
-          <button type="button" className="btn-sec" onClick={onClose} disabled={salvando}>
+          <button type="button" className="btn btn-sec" onClick={onClose} disabled={salvando}>
             Cancelar
           </button>
-          <button type="submit" className="btn-danger" disabled={salvando}>
-            {salvando ? "Registrando..." : "Negar produção"}
+          <button type="submit" className="btn btn-perigo" disabled={salvando}>
+            {salvando ? "Registrando…" : "Negar produção"}
           </button>
         </div>
       </form>

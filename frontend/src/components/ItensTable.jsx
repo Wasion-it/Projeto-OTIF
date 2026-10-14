@@ -1,270 +1,152 @@
 import { useState } from "react";
-import {
-  ArrowDown,
-  ArrowUp,
-  ArrowsDownUp,
-  CaretLeft,
-  CaretRight,
-  Check,
-  CheckCircle,
-  DownloadSimple,
-  Hourglass,
-  MagnifyingGlass,
-  Prohibit,
-  Rows,
-  SquareHalfBottom,
-  WarningCircle,
-  XCircle,
-} from "@phosphor-icons/react";
-import { motivoLabel } from "../api.js";
-import { fmtDataHoraCurta, fmtInteiro, formatarNotaFiscal } from "../lib/format.js";
-import { usePreferencia } from "../hooks/usePreferencia.js";
+import Icone from "./Icone.jsx";
 import SeletorColunas from "./SeletorColunas.jsx";
+import { motivoLabel } from "../api.js";
+import {
+  acaoDoPedido,
+  contractDateDe,
+  detalheEtapa,
+  nomeEtapa,
+  podeNegarProducao,
+  registroPendente,
+  situacaoPedido,
+} from "../lib/etapas.js";
+import {
+  fmtDataCurta,
+  fmtDataHoraCurta,
+  fmtInteiro,
+  formatarNotaFiscal,
+} from "../lib/format.js";
+import { usePreferencia } from "../hooks/usePreferencia.js";
 
-// Rótulo da ação conforme a etapa atual (fluxo sequencial).
-const ACAO_ETAPA = {
-  pcp: "Confirmar PCP",
-  producao: "Confirmar produção",
-  comercial: "Agendar inspeção",
-  lem: "Confirmar inspeção",
-  faturamento: "Aguardando faturamento",
-  estoque: "Aguardando embarque",
-  entrega: "Confirmar entrega",
-};
-
-function acaoDaLinha(it) {
-  const etapa = it.processo?.etapa_atual;
-  if (!etapa || etapa === "concluido") return { label: "Editar", tipo: "entrega" };
-  if (etapa === "entrega") return { label: "Confirmar entrega", tipo: "entrega" };
-  if (etapa === "faturamento" || etapa === "estoque") {
-    return {
-      label: etapa === "faturamento" ? "Aguarda faturamento" : "Aguarda embarque",
-      tipo: "etapa",
-      bloqueada: true,
-    };
-  }
-  if (etapa === "lem" && it.processo?.lem_aguardando_inicio) {
-    return {
-      label: `Aguarda ${it.processo.inspecao_agendada_data}`,
-      tipo: "etapa",
-      bloqueada: true,
-    };
-  }
-  return { label: ACAO_ETAPA[etapa] || "Confirmar etapa", tipo: "etapa" };
-}
-
-// Colunas possíveis, na ordem em que aparecem. `key` é também a chave de
-// ordenação aceita pelo backend. `fixa` = identifica a linha, não some.
-// `padrao` = entra na visão inicial. Cada linha é um PEDIDO.
+// Colunas na ordem em que aparecem. `sort` é a chave aceita pelo backend
+// (null = não ordenável). `fixa` identifica o pedido e diz onde ele está.
 export const COLUNAS = [
-  { key: "status", label: "Status", fixa: true },
-  { key: "pedido", label: "Pedido", fixa: true },
-  { key: "cliente", label: "Cliente", fixa: true },
-  { key: "etapa", label: "Etapa", padrao: true },
-  { key: "prazo", label: "Contract Date", padrao: true },
-  { key: "qtd", label: "Faturado / Pedido", num: true, padrao: true },
-  { key: "atraso", label: "Atraso", padrao: true },
-  { key: "itens", label: "Itens", num: true },
-  { key: "solicitada", label: "Digitação" },
-  { key: "faturamento", label: "Faturamento" },
-  { key: "nota_fiscal", label: "Nota fiscal" },
-  { key: "embarque", label: "Embarque" },
-  { key: "entrega", label: "Entrega" },
-  { key: "motivo", label: "Motivo" },
+  { key: "situacao", sort: "status", label: "Situação", fixa: true },
+  { key: "prazo", sort: "prazo", label: "Contract Date", padrao: true },
+  { key: "pedido", sort: "pedido", label: "Pedido", fixa: true },
+  { key: "cliente", sort: "cliente", label: "Cliente", fixa: true },
+  { key: "etapa", sort: "etapa", label: "Etapa", fixa: true },
+  { key: "qtd", sort: "qtd", label: "Faturado / pedido", num: true, padrao: true },
+  { key: "itens", sort: "itens", label: "Itens", num: true },
+  { key: "solicitada", sort: "solicitada", label: "Digitação" },
+  { key: "faturamento", sort: "faturamento", label: "Faturamento" },
+  { key: "nota_fiscal", sort: "nota_fiscal", label: "Nota fiscal" },
+  { key: "embarque", sort: "embarque", label: "Embarque" },
+  { key: "entrega", sort: "entrega", label: "Entrega" },
+  { key: "atraso", sort: "atraso", label: "Atraso", num: true },
+  { key: "motivo", sort: "motivo", label: "Motivo da falha" },
+  { key: "interno", sort: null, label: "Nº interno / ID ERP" },
 ];
 
 const COLUNAS_PADRAO = COLUNAS.filter((c) => c.padrao).map((c) => c.key);
 
-// Status com ícone + texto: a cor nunca é o único sinal.
-const STATUS = {
-  otif: { txt: "OTIF", cls: "badge-ok", Icone: CheckCircle },
-  falha: { txt: "Falha", cls: "badge-fail", Icone: XCircle },
-  pendente: { txt: "Pendente", cls: "badge-pend", Icone: Hourglass },
-  sem_contract_date: { txt: "Sem Contract Date", cls: "badge-missing", Icone: WarningCircle },
-};
+function Situacao({ it }) {
+  const s = situacaoPedido(it);
+  return <span className={`tom-${s.tom} peso-500`}>{s.texto}</span>;
+}
 
-function StatusBadge({ status }) {
-  const s = STATUS[status] || STATUS.pendente;
-  const { Icone } = s;
+// Trilha do fluxo: uma célula por etapa, sempre na mesma posição, para que a
+// coluna inteira funcione como um mapa de onde os pedidos estão. A informação
+// textual está ao lado; a trilha é um reforço visual.
+function Trilha({ processo }) {
+  const etapas = (processo?.etapas || []).filter((e) => e.chave !== "pedido");
+  if (etapas.length === 0) return null;
+  const bloqueado =
+    processo.etapa_atual === "pcp" &&
+    processo.negativas_producao?.some((n) => !n.resolvida_em);
   return (
-    <span className={`badge ${s.cls}`}>
-      <Icone size={14} weight="fill" aria-hidden="true" />
-      {s.txt}
+    <span className="trilha" aria-hidden="true">
+      {etapas.map((etapa) => {
+        const atual = etapa.chave === processo.etapa_atual;
+        const classe = atual
+          ? bloqueado
+            ? "atual bloqueada"
+            : "atual"
+          : etapa.concluida
+            ? "feita"
+            : "";
+        return <i key={etapa.chave} className={classe} />;
+      })}
     </span>
   );
 }
 
-function PrazoCell({ it }) {
-  const contractDate = it.contract_date || it.prazo_entrega;
-  if (!contractDate) {
-    return (
-      <span className="prazo-ausente">
-        <WarningCircle size={14} weight="fill" aria-hidden="true" />
-        Não informado
-      </span>
-    );
-  }
-
-  let contagem = null;
-  let classeContagem = "prazo-neutro";
-  if (it.status === "pendente" && it.dias_restantes != null) {
-    const dias = it.dias_restantes;
-    classeContagem =
-      it.situacao_prazo === "vencido"
-        ? "prazo-vencido"
-        : it.situacao_prazo === "atencao"
-          ? "prazo-atencao"
-          : "prazo-ok";
-    if (dias < 0) contagem = `vencido há ${Math.abs(dias)}d`;
-    else if (dias === 0) contagem = "vence hoje";
-    else contagem = `faltam ${dias}d`;
-  }
-
-  return (
-    <span className="prazo-cell" title={`Contract Date: ${contractDate}`}>
-      <span className="prazo-data">{contractDate}</span>
-      {contagem && <span className={`prazo-contagem ${classeContagem}`}>{contagem}</span>}
-    </span>
-  );
-}
-
-function EtapaCell({ it }) {
+function Etapa({ it }) {
   const processo = it.processo;
-  if (!processo) return <span className="prazo-neutro">-</span>;
-
-  let detalhe = null;
-  const ultimaNegativaAberta = processo.negativas_producao?.find(
-    (negativa) => !negativa.resolvida_em
-  );
-  const bloqueio = processo.etapa_atual === "pcp" && ultimaNegativaAberta;
-  const classe = processo.concluido
-    ? "etapa-tag etapa-done"
-    : bloqueio
-      ? "etapa-tag etapa-bloqueio"
-      : "etapa-tag";
-
-  // Mini-trilha das etapas: posição no fluxo sem abrir o detalhe.
-  const etapas = (processo.etapas || []).filter(
-    (etapa) => etapa.chave !== "pedido"
-  );
-  const progresso = etapas.length > 1 && (
-    <span className="etapa-progresso" aria-hidden="true">
-      {etapas.map((etapa) => (
-        <i
-          key={etapa.chave}
-          className={
-            etapa.concluida ? "feito" : etapa.chave === processo.etapa_atual ? "atual" : ""
-          }
-        />
-      ))}
-    </span>
-  );
-  if (processo.etapa_atual === "pcp" && ultimaNegativaAberta) {
-    const quantidade = processo.negativas_abertas || 1;
-    detalhe = `${quantidade} ${quantidade === 1 ? "negativa" : "negativas"} · previsão ${
-      ultimaNegativaAberta.data_prevista
-    }`;
-  } else if (processo.etapa_atual === "faturamento") {
-    detalhe = "aguardando data/hora do ERP";
-  } else if (processo.etapa_atual === "estoque") {
-    const dias = processo.dias_na_etapa_atual ?? 0;
-    detalhe = dias > 0 ? `${dias}d em estoque · aguarda embarque` : "aguarda embarque ERP";
-  } else if (processo.etapa_atual === "lem") {
-    if (processo.lem_aguardando_inicio) {
-      detalhe = `aguarda ${processo.inicio_lem_data} · ${
-        processo.dias_ate_inicio_lem ?? 0
-      }d`;
-    } else {
-      detalhe = `${processo.dias_na_etapa_atual ?? 0}d no LEM`;
-    }
-  } else if (processo.inspecao_agendada_data) {
-    detalhe = `inspeção ${processo.inspecao_agendada_data}`;
-  }
-
+  if (!processo) return <span className="txt-sec">—</span>;
+  const detalhe = registroPendente(it)
+    ? { texto: "Já faturado · falta registrar", tom: "atencao" }
+    : detalheEtapa(processo);
   return (
-    <span className="etapa-cell-wrap">
-      <span className={classe}>
-        {processo.concluido && <Check size={12} weight="bold" aria-hidden="true" />}
-        {bloqueio && <Prohibit size={12} weight="bold" aria-hidden="true" />}
-        {processo.etapa_atual_nome}
+    <span className="etapa-celula">
+      <Trilha processo={processo} />
+      <span className="etapa-texto">
+        <span className={processo.concluido ? "tom-ok" : ""}>{nomeEtapa(processo.etapa_atual)}</span>
+        {detalhe && (
+          <span className={`etapa-detalhe tom-${detalhe.tom}`}>{detalhe.texto}</span>
+        )}
       </span>
-      {progresso}
-      {detalhe && <span className="etapa-agendamento">{detalhe}</span>}
     </span>
   );
 }
 
-function QtdCell({ pedida, faturada }) {
-  const p = Number(pedida) || 0;
-  const f = Number(faturada) || 0;
-  const pct = p > 0 ? Math.min(100, (f / p) * 100) : 0;
-  const full = p > 0 && f >= p;
+function Quantidade({ it }) {
+  const pedida = Number(it.qtd_pedida_total) || 0;
+  const faturada = Number(it.qtd_faturada_total) || 0;
+  const parcial = faturada > 0 && faturada < pedida;
   return (
-    <>
-      <div className="qtd">
-        {f} de {p}
-      </div>
-      <div className={`qtd-bar ${full ? "full" : ""}`}>
-        <span style={{ width: `${pct}%` }} />
-      </div>
-    </>
-  );
-}
-
-function AtrasoCell({ it }) {
-  if (it.dias_atraso == null) return "-";
-  if (it.dias_atraso > 0) {
-    return (
-      <span className="atraso">
-        +{it.dias_atraso}d{it.origem_atraso ? ` (${it.origem_atraso})` : ""}
-      </span>
-    );
-  }
-  return <span className="prazo-neutro">no prazo</span>;
-}
-
-function PedidoCell({ it, selecionado, onDetalhe }) {
-  return (
-    <>
-      <button
-        type="button"
-        className="ped-num ped-link"
-        aria-label={`Ver detalhes do pedido ${it.numero}, cliente ${it.cliente}`}
-        aria-haspopup="dialog"
-        aria-expanded={selecionado}
-        aria-controls="pedido-drawer"
-        onClick={(event) => {
-          event.stopPropagation();
-          onDetalhe?.(it);
-        }}
-      >
-        {it.numero}
-      </button>
-      {it.erp_id != null && <div className="ped-interno">ID ERP {it.erp_id}</div>}
-      {it.numero_interno && <div className="ped-interno">interno {it.numero_interno}</div>}
-    </>
+    <span className={faturada === 0 ? "txt-sec" : ""}>
+      {fmtInteiro(faturada)} / {fmtInteiro(pedida)}
+      {parcial && <span className="tom-atencao peso-500"> parcial</span>}
+    </span>
   );
 }
 
 const CELULA = {
-  status: (it) => <StatusBadge status={it.status} />,
+  situacao: (it) => <Situacao it={it} />,
+  prazo: (it) => {
+    const cd = contractDateDe(it);
+    return cd ? fmtDataCurta(cd) : <span className="tom-atencao">não informado</span>;
+  },
   pedido: (it, ctx) => (
-    <PedidoCell it={it} selecionado={ctx.selecionado} onDetalhe={ctx.onDetalhe} />
+    <button
+      type="button"
+      className="link-pedido"
+      aria-label={`Ver detalhes do pedido ${it.numero}, cliente ${it.cliente}`}
+      aria-haspopup="dialog"
+      aria-expanded={ctx.selecionado}
+      aria-controls="pedido-drawer"
+      onClick={(event) => {
+        event.stopPropagation();
+        ctx.onDetalhe?.(it);
+      }}
+    >
+      {it.numero}
+    </button>
   ),
-  // Razão social longa é a regra, não a exceção: trunca na célula e mantém o
-  // nome completo acessível no title.
   cliente: (it) => <span title={it.cliente}>{it.cliente}</span>,
-  etapa: (it) => <EtapaCell it={it} />,
-  prazo: (it) => <PrazoCell it={it} />,
-  qtd: (it) => <QtdCell pedida={it.qtd_pedida_total} faturada={it.qtd_faturada_total} />,
-  atraso: (it) => <AtrasoCell it={it} />,
+  etapa: (it) => <Etapa it={it} />,
+  qtd: (it) => <Quantidade it={it} />,
   itens: (it) => it.qtd_itens,
-  solicitada: (it) => it.data_solicitada,
+  solicitada: (it) => fmtDataCurta(it.data_solicitada),
   faturamento: (it) => fmtDataHoraCurta(it.faturamento_em || it.processo?.faturamento_em),
   nota_fiscal: (it) => formatarNotaFiscal(it.nota_fiscal_numero, it.nota_fiscal_serie),
   embarque: (it) => fmtDataHoraCurta(it.embarque_em || it.processo?.embarque_em),
-  entrega: (it) => it.data_entrega_real || "-",
-  motivo: (it) => (it.motivo_falha ? motivoLabel(it.motivo_falha) : "-"),
+  entrega: (it) => fmtDataCurta(it.data_entrega_real),
+  atraso: (it) =>
+    it.dias_atraso == null ? (
+      "—"
+    ) : it.dias_atraso > 0 ? (
+      <span className="tom-erro">+{it.dias_atraso}d</span>
+    ) : (
+      "0d"
+    ),
+  motivo: (it) => (it.motivo_falha ? motivoLabel(it.motivo_falha) : "—"),
+  interno: (it) =>
+    [it.numero_interno, it.erp_id != null ? `ERP ${it.erp_id}` : null]
+      .filter(Boolean)
+      .join(" · ") || "—",
 };
 
 function csvEscape(v) {
@@ -277,12 +159,14 @@ function csvEscape(v) {
 function exportarCsv(linhas) {
   const cabecalho = [
     "Status",
+    "Situação",
     "ID ERP",
     "Pedido (cliente)",
     "Nº interno",
     "Cliente",
     "Itens",
     "Etapa atual",
+    "Dias na etapa atual",
     "Comercial concluído em",
     "Inspeção agendada",
     "LEM concluído em",
@@ -305,12 +189,14 @@ function exportarCsv(linhas) {
   const corpo = linhas.map((it) =>
     [
       it.status,
+      situacaoPedido(it).texto,
       it.erp_id,
       it.numero,
       it.numero_interno,
       it.cliente,
       it.qtd_itens,
       it.processo?.etapa_atual_nome || "",
+      it.processo?.dias_na_etapa_atual ?? "",
       it.processo?.comercial_data || "",
       it.processo?.inspecao_agendada_data || "",
       it.processo?.lem_data || "",
@@ -320,7 +206,7 @@ function exportarCsv(linhas) {
       it.embarque_em || it.processo?.embarque_em || "",
       it.processo?.gargalo || "",
       it.data_solicitada,
-      it.contract_date || it.prazo_entrega,
+      contractDateDe(it),
       it.dias_restantes,
       it.data_faturamento,
       it.data_entrega_real,
@@ -343,11 +229,37 @@ function exportarCsv(linhas) {
   URL.revokeObjectURL(url);
 }
 
+function Acao({ it, onConfirmar, onConfirmarEtapa, onNegarProducao }) {
+  const acao = acaoDoPedido(it);
+  if (!acao.tipo) {
+    return acao.espera ? <span className="txt-sec">{acao.espera}</span> : null;
+  }
+  const handler = acao.tipo === "entrega" ? onConfirmar : onConfirmarEtapa;
+  return (
+    <span className="acoes-linha">
+      <button type="button" className="btn btn-sec btn-p" onClick={() => handler?.(it)}>
+        {acao.label}
+      </button>
+      {podeNegarProducao(it) && onNegarProducao && (
+        <button
+          type="button"
+          className="btn btn-texto btn-p tom-erro"
+          onClick={() => onNegarProducao(it)}
+          aria-label={`Negar produção do pedido ${it.numero}`}
+        >
+          Negar
+        </button>
+      )}
+    </span>
+  );
+}
+
 export default function ItensTable({
   itens,
   carregando = false,
   ordenacao = { sort: "prazo", order: "asc" },
   onOrdenar,
+  onDefinirOrdenacao,
   page = 1,
   pageSize = 25,
   totalItens = 0,
@@ -357,14 +269,22 @@ export default function ItensTable({
   onExportCsv,
   onConfirmar,
   onConfirmarEtapa,
+  onNegarProducao,
   pedidoSelecionadoId,
   onDetalhe,
+  temFiltros = false,
+  onLimparFiltros,
+  selecaoAtiva = false,
+  selecionados,
+  onAlternarSelecao,
+  onSelecionarPagina,
+  lote = null,
 }) {
-  // Sistema operacional: densidade compacta é o padrão, porque a tarefa é
-  // escanear muitas linhas, não admirar o espaçamento.
+  // Densidade compacta é o padrão: a tarefa é varrer muitas linhas.
   const [densidade, setDensidade] = usePreferencia("otif.tabela.densidade", "compacta");
+  // Chave nova: o conjunto de colunas mudou e o padrão antigo não se aplica.
   const [colunasVisiveis, setColunasVisiveis] = usePreferencia(
-    "otif.tabela.colunas",
+    "otif.tabela.colunas.v2",
     COLUNAS_PADRAO
   );
   const [exportando, setExportando] = useState(false);
@@ -373,9 +293,13 @@ export default function ItensTable({
   const colunas = COLUNAS.filter(
     (coluna) => coluna.fixa || colunasVisiveis.includes(coluna.key)
   );
-  const totalColunas = colunas.length + 1; // + coluna de ações
+  const totalColunas = colunas.length + 1 + (selecaoAtiva ? 1 : 0);
   const vazio = !carregando && itens.length === 0;
   const inicio = totalItens === 0 ? 0 : (page - 1) * pageSize;
+  const idsPagina = itens.map((it) => it.pedido_id);
+  const todosMarcados =
+    selecaoAtiva && idsPagina.length > 0 && idsPagina.every((id) => selecionados?.has(id));
+  const algunsMarcados = selecaoAtiva && idsPagina.some((id) => selecionados?.has(id));
 
   async function exportar() {
     if (!onExportCsv) return;
@@ -391,117 +315,130 @@ export default function ItensTable({
   }
 
   return (
-    <section className="panel panel-tabela" aria-busy={carregando} aria-labelledby="pedidos-tabela-titulo">
-      <h3 id="pedidos-tabela-titulo" className="sr-only">
-        Lista de pedidos
-      </h3>
-
+    <section className="tabela-secao" aria-busy={carregando} aria-labelledby="pedidos-tabela-titulo">
       <div className="tabela-toolbar">
-        <span className="tabela-contagem" aria-live="polite">
-          {carregando && itens.length === 0 ? (
-            "Carregando pedidos…"
-          ) : (
-            <>
-              <b>{fmtInteiro(totalItens)}</b>
-              {totalItens === 1 ? "pedido" : "pedidos"}
-            </>
-          )}
-        </span>
-
-        <div className="toolbar-spacer" />
-
-        <div className="densidade-toggle" role="group" aria-label="Densidade da tabela">
+        <h2 id="pedidos-tabela-titulo" className="tabela-contagem" aria-live="polite">
+          {carregando && itens.length === 0
+            ? "Carregando pedidos…"
+            : `${fmtInteiro(totalItens)} ${totalItens === 1 ? "pedido" : "pedidos"}`}
+        </h2>
+        <div className="toolbar-direita">
+          {/* Em telas estreitas o cabeçalho some; a ordenação vira um seletor. */}
+          <label className="campo-inline ordenar-mobile">
+            <span className="campo-rotulo">Ordenar</span>
+            <select
+              value={`${ordenacao.sort}:${ordenacao.order}`}
+              onChange={(e) => {
+                const [sort, order] = e.target.value.split(":");
+                onDefinirOrdenacao?.({ sort, order });
+              }}
+            >
+              {COLUNAS.filter((c) => c.sort).flatMap((c) => [
+                <option key={`${c.sort}:asc`} value={`${c.sort}:asc`}>
+                  {c.label} ↑
+                </option>,
+                <option key={`${c.sort}:desc`} value={`${c.sort}:desc`}>
+                  {c.label} ↓
+                </option>,
+              ])}
+            </select>
+          </label>
+          <div className="seg-grupo densidade" role="group" aria-label="Densidade da tabela">
+            <button
+              type="button"
+              className={`seg ${densidade === "compacta" ? "ativo" : ""}`}
+              aria-pressed={densidade === "compacta"}
+              onClick={() => setDensidade("compacta")}
+            >
+              Compacta
+            </button>
+            <button
+              type="button"
+              className={`seg ${densidade === "confortavel" ? "ativo" : ""}`}
+              aria-pressed={densidade === "confortavel"}
+              onClick={() => setDensidade("confortavel")}
+            >
+              Confortável
+            </button>
+          </div>
+          <SeletorColunas
+            colunas={COLUNAS}
+            visiveis={colunasVisiveis}
+            onChange={setColunasVisiveis}
+            onRestaurar={() => setColunasVisiveis(COLUNAS_PADRAO)}
+          />
           <button
             type="button"
-            className={densidade === "compacta" ? "ativo" : ""}
-            aria-pressed={densidade === "compacta"}
-            onClick={() => setDensidade("compacta")}
+            className="btn btn-sec"
+            onClick={exportar}
+            disabled={totalItens === 0 || exportando}
           >
-            <Rows size={14} aria-hidden="true" />
-            Compacta
-          </button>
-          <button
-            type="button"
-            className={densidade === "confortavel" ? "ativo" : ""}
-            aria-pressed={densidade === "confortavel"}
-            onClick={() => setDensidade("confortavel")}
-          >
-            <SquareHalfBottom size={14} aria-hidden="true" />
-            Confortável
+            {exportando ? "Exportando…" : "Exportar CSV"}
           </button>
         </div>
-
-        <SeletorColunas
-          colunas={COLUNAS}
-          visiveis={colunasVisiveis}
-          onChange={setColunasVisiveis}
-          onRestaurar={() => setColunasVisiveis(COLUNAS_PADRAO)}
-        />
-
-        <button
-          type="button"
-          className="btn-sec btn-compacto"
-          onClick={exportar}
-          disabled={totalItens === 0 || exportando}
-        >
-          <DownloadSimple className="ico" size={16} weight="bold" aria-hidden="true" />
-          {exportando ? "Exportando…" : "Exportar CSV"}
-        </button>
       </div>
 
       {erroExportacao && (
-        <div className="exportacao-erro" role="alert">
+        <p className="msg-erro" role="alert">
           {erroExportacao}
-        </div>
+        </p>
       )}
 
+      {lote}
+
       <div className="tabela-wrap">
-        <table
-          className={`tabela ${densidade === "compacta" ? "compacta" : ""}`}
-          aria-labelledby="pedidos-tabela-titulo"
-        >
+        <table className={`tabela tabela-pedidos ${densidade === "compacta" ? "compacta" : ""}`}>
           <thead>
             <tr>
+              {selecaoAtiva && (
+                <th className="col-check">
+                  <input
+                    type="checkbox"
+                    aria-label="Selecionar todos os pedidos desta página"
+                    checked={todosMarcados}
+                    ref={(el) => {
+                      if (el) el.indeterminate = algunsMarcados && !todosMarcados;
+                    }}
+                    onChange={(event) => onSelecionarPagina?.(idsPagina, event.target.checked)}
+                  />
+                </th>
+              )}
               {colunas.map((c) => {
-                const ativo = c.key === ordenacao.sort;
+                const ativo = c.sort && c.sort === ordenacao.sort;
                 return (
                   <th
                     key={c.key}
-                    className={`sortable ${c.num ? "num" : ""}`}
+                    className={c.num ? "num" : ""}
                     aria-sort={
-                      ativo ? (ordenacao.order === "asc" ? "ascending" : "descending") : "none"
+                      ativo ? (ordenacao.order === "asc" ? "ascending" : "descending") : undefined
                     }
                   >
-                    <button
-                      type="button"
-                      className="th-sort-button"
-                      onClick={() => onOrdenar?.(c.key)}
-                      aria-label={`Ordenar por ${c.label}${
-                        ativo
-                          ? ordenacao.order === "asc"
-                            ? ", ordem crescente"
-                            : ", ordem decrescente"
-                          : ""
-                      }`}
-                    >
-                      <span className="th-inner">
+                    {c.sort ? (
+                      <button
+                        type="button"
+                        className="th-ordenar"
+                        onClick={() => onOrdenar?.(c.sort)}
+                        aria-label={`Ordenar por ${c.label}${
+                          ativo
+                            ? ordenacao.order === "asc"
+                              ? ", ordem crescente"
+                              : ", ordem decrescente"
+                            : ""
+                        }`}
+                      >
                         {c.label}
-                        <span className={`sort-ind ${ativo ? "" : "inativo"}`} aria-hidden="true">
-                          {!ativo ? (
-                            <ArrowsDownUp size={13} />
-                          ) : ordenacao.order === "asc" ? (
-                            <ArrowUp size={13} weight="bold" />
-                          ) : (
-                            <ArrowDown size={13} weight="bold" />
-                          )}
-                        </span>
-                      </span>
-                    </button>
+                        {ativo && (
+                          <Icone nome={ordenacao.order === "asc" ? "cima" : "baixo"} tamanho={12} />
+                        )}
+                      </button>
+                    ) : (
+                      <span className="th-estatico">{c.label}</span>
+                    )}
                   </th>
                 );
               })}
               <th className="col-acoes">
-                <span className="th-estatico">Ação</span>
+                <span className="th-estatico">Ação manual</span>
               </th>
             </tr>
           </thead>
@@ -509,10 +446,10 @@ export default function ItensTable({
             {carregando &&
               itens.length === 0 &&
               Array.from({ length: 8 }).map((_, i) => (
-                <tr key={`sk-${i}`}>
+                <tr key={`sk-${i}`} aria-hidden="true">
                   {Array.from({ length: totalColunas }).map((__, j) => (
-                    <td key={j} className={j === totalColunas - 1 ? "col-acoes" : ""}>
-                      <div className="skeleton sk-line" style={{ marginBottom: 0 }} />
+                    <td key={j}>
+                      <span className="esqueleto" />
                     </td>
                   ))}
                 </tr>
@@ -521,56 +458,53 @@ export default function ItensTable({
             {vazio && (
               <tr>
                 <td className="tabela-vazio" colSpan={totalColunas}>
-                  <MagnifyingGlass className="ico" size={28} aria-hidden="true" />
-                  <strong>Nenhum pedido neste recorte.</strong>
-                  <span>
-                    Troque a situação na barra acima ou amplie o período de digitação.
-                  </span>
+                  <p>Nenhum pedido com estes filtros.</p>
+                  {temFiltros && onLimparFiltros && (
+                    <button type="button" className="btn btn-texto" onClick={onLimparFiltros}>
+                      Limpar todos os filtros
+                    </button>
+                  )}
                 </td>
               </tr>
             )}
 
             {itens.map((it) => {
               const selecionado = it.pedido_id === pedidoSelecionadoId;
-              const acao = acaoDaLinha(it);
-              const handler = acao.tipo === "etapa" ? onConfirmarEtapa : onConfirmar;
-              const ctx = { selecionado, onDetalhe };
-              const pendente = it.status === "pendente";
-              const risco =
-                pendente && it.situacao_prazo === "vencido"
-                  ? "linha-vencida"
-                  : pendente && it.situacao_prazo === "atencao"
-                    ? "linha-atencao"
-                    : "";
+              const marcado = selecaoAtiva && selecionados?.has(it.pedido_id);
               return (
                 <tr
                   key={it.pedido_id}
-                  className={`clicavel ${risco} ${selecionado ? "selecionada" : ""}`}
+                  className={`clicavel ${selecionado || marcado ? "selecionada" : ""}`}
                   onClick={() => onDetalhe?.(it)}
                 >
+                  {selecaoAtiva && (
+                    <td className="col-check" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        aria-label={`Selecionar pedido ${it.numero}`}
+                        checked={Boolean(marcado)}
+                        onChange={(event) =>
+                          onAlternarSelecao?.(it.pedido_id, event.target.checked)
+                        }
+                      />
+                    </td>
+                  )}
                   {colunas.map((c) => (
-                    <td key={c.key} className={c.num ? "num" : c.key === "cliente" ? "cliente" : ""}>
-                      {CELULA[c.key](it, ctx)}
+                    <td
+                      key={c.key}
+                      className={`col-${c.key} ${c.num ? "num" : ""}`}
+                      data-rotulo={c.fixa ? undefined : c.label}
+                    >
+                      {CELULA[c.key](it, { selecionado, onDetalhe })}
                     </td>
                   ))}
                   <td className="col-acoes" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      type="button"
-                      className="btn-sec btn-acao"
-                      onClick={() => handler?.(it)}
-                      disabled={acao.bloqueada}
-                      title={
-                        acao.bloqueada
-                          ? it.processo?.etapa_atual === "faturamento"
-                            ? "O faturamento virá na próxima atualização direta do JUND."
-                            : it.processo?.etapa_atual === "estoque"
-                              ? "O embarque virá na próxima atualização direta do JUND."
-                              : "O LEM ainda aguarda seus pré-requisitos."
-                          : undefined
-                      }
-                    >
-                      {acao.label}
-                    </button>
+                    <Acao
+                      it={it}
+                      onConfirmar={onConfirmar}
+                      onConfirmarEtapa={onConfirmarEtapa}
+                      onNegarProducao={onNegarProducao}
+                    />
                   </td>
                 </tr>
               );
@@ -581,8 +515,8 @@ export default function ItensTable({
 
       {totalItens > 0 && (
         <div className="pager">
-          <label>
-            Linhas por página{" "}
+          <label className="campo-inline">
+            <span className="campo-rotulo">Linhas por página</span>
             <select value={pageSize} onChange={(e) => onPageSize?.(Number(e.target.value))}>
               <option value={25}>25</option>
               <option value={50}>50</option>
@@ -597,19 +531,21 @@ export default function ItensTable({
           <div className="pager-btns">
             <button
               type="button"
+              className="btn btn-sec"
               onClick={() => onPage?.(Math.max(1, page - 1))}
               disabled={page <= 1}
             >
-              <CaretLeft size={14} weight="bold" aria-hidden="true" />
+              <Icone nome="esquerda" tamanho={14} />
               Anterior
             </button>
             <button
               type="button"
+              className="btn btn-sec"
               onClick={() => onPage?.(Math.min(totalPaginas, page + 1))}
               disabled={page >= totalPaginas}
             >
               Próxima
-              <CaretRight size={14} weight="bold" aria-hidden="true" />
+              <Icone nome="direita" tamanho={14} />
             </button>
           </div>
         </div>

@@ -474,6 +474,23 @@ def test_duracao_lem_concluido_usa_producao_se_for_mais_tardia():
     assert lem["dias"] == 3
 
 
+def test_lem_antecipado_conta_zero_dias_e_avanca_o_fluxo():
+    etapa = make_etapa(
+        pcp_data=date(2026, 1, 2),
+        producao_fim=date(2026, 1, 10),
+        comercial_data=date(2026, 1, 5),
+        inspecao_agendada_data=date(2026, 1, 25),
+        lem_data=date(2026, 1, 12),
+    )
+    processo = avaliar_pedido(make_pedido(etapa=etapa)).processo
+    lem = next(e for e in processo["etapas"] if e["chave"] == "lem")
+
+    assert processo["etapa_atual"] == "faturamento"
+    assert lem["concluida"] is True
+    assert lem["dias"] == 0
+    assert processo["lem_aguardando_inicio"] is False
+
+
 def test_lem_concluido_sem_faturamento_aguarda_erp():
     hoje = data_operacional()
     etapa = make_etapa(

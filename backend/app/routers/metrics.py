@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from ..avaliacao import carregar_e_avaliar
 from ..database import get_db
+from ..ordenacao import filtrar_resultados
 from ..otif import agregar, agregar_por_cliente, agregar_processo
 from ..schemas import ClienteOtif, MetricasOut, ProcessoMetricasOut, TendenciaMes
 
@@ -59,11 +60,19 @@ def metricas_processo(
     data_ini: date | None = Query(None),
     data_fim: date | None = Query(None),
     cliente: str | None = Query(None),
+    status: str | None = Query(None, description="Mesmo filtro de /pedidos"),
+    situacao_prazo: str | None = Query(None, description="Mesmo filtro de /pedidos"),
     force_refresh: bool = Query(False),
     db: Session = Depends(get_db),
 ):
+    # Status e situacao sao opcionais: permitem que a contagem por etapa use o
+    # mesmo recorte da lista de pedidos.
     return agregar_processo(
-        _avaliar(db, data_ini, data_fim, cliente, force_refresh)
+        filtrar_resultados(
+            _avaliar(db, data_ini, data_fim, cliente, force_refresh),
+            status=status,
+            situacao_prazo=situacao_prazo,
+        )
     )
 
 

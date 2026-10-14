@@ -1,8 +1,8 @@
-import { CalendarBlank, X } from "@phosphor-icons/react";
+import Icone from "./Icone.jsx";
 import { fmtDataIso, isoLocal } from "../lib/format.js";
 
-// O recorte é o estado global de consulta (o mesmo da tela de Pedidos), então
-// fica visível e trocável em 1 clique: um KPI sem período não informa nada.
+// O recorte é o mesmo da tela de Pedidos (período de digitação e cliente),
+// então fica visível e trocável em 1 clique.
 const PRESETS = [
   { id: "tudo", label: "Todo o histórico", dias: null },
   { id: "30", label: "30 dias", dias: 30 },
@@ -23,9 +23,7 @@ function presetAtivo(filtros) {
   const encontrado = PRESETS.find((preset) => {
     if (preset.dias == null) return false;
     const intervalo = intervaloDe(preset.dias);
-    return (
-      intervalo.data_ini === filtros.data_ini && intervalo.data_fim === filtros.data_fim
-    );
+    return intervalo.data_ini === filtros.data_ini && intervalo.data_fim === filtros.data_fim;
   });
   return encontrado?.id || "personalizado";
 }
@@ -44,11 +42,6 @@ export default function PeriodoRapido({ filtros, onPeriodo, onRemoverCliente }) 
 
   return (
     <div className="recorte">
-      <span className="recorte-rotulo">
-        <CalendarBlank size={16} aria-hidden="true" />
-        Período
-      </span>
-
       <div className="seg-grupo" role="group" aria-label="Período de digitação">
         {PRESETS.map((preset) => (
           <button
@@ -61,24 +54,20 @@ export default function PeriodoRapido({ filtros, onPeriodo, onRemoverCliente }) 
             {preset.label}
           </button>
         ))}
-        {ativo === "personalizado" && (
-          <span className="seg ativo seg-estatico">Personalizado</span>
-        )}
       </div>
-
-      <span className="recorte-info">{descreverPeriodo(filtros)}</span>
-
+      <span className="txt-sec">
+        {ativo === "personalizado" ? "Período personalizado: " : ""}
+        {descreverPeriodo(filtros)}
+      </span>
       {filtros.cliente && (
         <button
           type="button"
-          className="filtro-chip"
+          className="chip"
           aria-label={`Remover filtro de cliente ${filtros.cliente}`}
           onClick={onRemoverCliente}
         >
-          <span>Cliente: {filtros.cliente}</span>
-          <span className="filtro-chip-remover" aria-hidden="true">
-            <X size={12} weight="bold" />
-          </span>
+          Cliente: {filtros.cliente}
+          <Icone nome="fechar" tamanho={12} />
         </button>
       )}
     </div>

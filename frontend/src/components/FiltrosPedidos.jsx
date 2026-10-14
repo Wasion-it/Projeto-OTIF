@@ -1,4 +1,5 @@
-import { Funnel, MagnifyingGlass, X } from "@phosphor-icons/react";
+import { useState } from "react";
+import Icone from "./Icone.jsx";
 import {
   filtrosPedidosIguais,
   normalizarFiltrosPedidos,
@@ -6,10 +7,8 @@ import {
 } from "../lib/pedidosFiltros.js";
 import { fmtDataIso } from "../lib/format.js";
 
-// Status e situação do Contract Date saíram daqui: agora vivem na barra de
-// segmentos, onde valem 1 clique. Sobra o refinamento — cliente e período de
-// digitação — que precisa de um Aplicar explícito para não consultar a API a
-// cada tecla digitada.
+// Cliente e período de digitação precisam de um Aplicar explícito para não
+// consultar a API a cada tecla. Etapa e situação ficam nas barras de 1 clique.
 function descreverFiltros(filtros) {
   const ativos = [];
   if (filtros.data_ini || filtros.data_fim) {
@@ -38,6 +37,8 @@ export default function FiltrosPedidos({
   onLimparTodos,
   onRemoverFiltro,
 }) {
+  // Em telas estreitas o formulário fica recolhido para a lista aparecer.
+  const [abertoMobile, setAbertoMobile] = useState(false);
   const normalizado = normalizarFiltrosPedidos(rascunho);
   const alterado = !filtrosPedidosIguais(rascunho, filtros);
   const erroPeriodo =
@@ -58,33 +59,40 @@ export default function FiltrosPedidos({
   }
 
   return (
-    <div className="filtros-barra">
+    <div className="filtros">
+      <button
+        type="button"
+        className="btn btn-sec filtros-toggle"
+        aria-expanded={abertoMobile}
+        aria-controls="filtros-form"
+        onClick={() => setAbertoMobile((v) => !v)}
+      >
+        Cliente e período{filtrosAtivos.length > 0 ? ` (${filtrosAtivos.length})` : ""}
+        <Icone nome={abertoMobile ? "cima" : "abaixo"} tamanho={14} />
+      </button>
+
       <form
-        className="filtros-linha"
+        id="filtros-form"
+        className={`filtros-form ${abertoMobile ? "aberto" : ""}`}
         onSubmit={aplicar}
         noValidate
         role="search"
         aria-label="Refinar pedidos por cliente e período de digitação"
       >
-        <label className="filtro-campo filtro-cliente" htmlFor="filtro-cliente">
-          Cliente
-          <span className="campo-com-icone">
-            <MagnifyingGlass className="ico" size={16} aria-hidden="true" />
-            <input
-              id="filtro-cliente"
-              type="search"
-              value={rascunho.cliente}
-              placeholder="Nome ou parte do nome"
-              autoComplete="off"
-              onChange={(event) => alterar("cliente", event.target.value)}
-            />
-          </span>
+        <label className="campo campo-cliente">
+          <span className="campo-rotulo">Cliente</span>
+          <input
+            type="search"
+            value={rascunho.cliente}
+            placeholder="Nome ou parte do nome"
+            autoComplete="off"
+            onChange={(event) => alterar("cliente", event.target.value)}
+          />
         </label>
 
-        <label className="filtro-campo" htmlFor="filtro-data-inicial">
-          Digitação de
+        <label className="campo">
+          <span className="campo-rotulo">Digitação de</span>
           <input
-            id="filtro-data-inicial"
             type="date"
             value={rascunho.data_ini}
             max={rascunho.data_fim || undefined}
@@ -94,10 +102,9 @@ export default function FiltrosPedidos({
           />
         </label>
 
-        <label className="filtro-campo" htmlFor="filtro-data-final">
-          até
+        <label className="campo">
+          <span className="campo-rotulo">até</span>
           <input
-            id="filtro-data-final"
             type="date"
             value={rascunho.data_fim}
             min={rascunho.data_ini || undefined}
@@ -108,13 +115,12 @@ export default function FiltrosPedidos({
         </label>
 
         <div className="filtros-acoes">
-          <button type="submit" className="btn" disabled={!alterado || Boolean(erroPeriodo)}>
-            <Funnel className="ico" size={16} weight="bold" aria-hidden="true" />
+          <button type="submit" className="btn btn-sec" disabled={!alterado || Boolean(erroPeriodo)}>
             Aplicar
           </button>
           <button
             type="button"
-            className="btn-ghost"
+            className="btn btn-texto"
             disabled={!haAlgoParaLimpar}
             onClick={onLimparTodos}
           >
@@ -124,39 +130,27 @@ export default function FiltrosPedidos({
       </form>
 
       {erroPeriodo && (
-        <div className="filtros-erro" id="filtro-periodo-erro" role="alert">
+        <p className="msg-erro" id="filtro-periodo-erro" role="alert">
           {erroPeriodo}
-        </div>
+        </p>
       )}
 
       {(filtrosAtivos.length > 0 || alterado) && (
         <div className="filtros-rodape">
-          <div className="filtros-chips">
-            {filtrosAtivos.map((filtro) => (
-              <button
-                type="button"
-                className="filtro-chip"
-                key={filtro.chave}
-                aria-label={`Remover filtro ${filtro.rotulo}`}
-                onClick={() => onRemoverFiltro(filtro.chave)}
-              >
-                <span>{filtro.rotulo}</span>
-                <span className="filtro-chip-remover" aria-hidden="true">
-                  <X size={12} weight="bold" />
-                </span>
-              </button>
-            ))}
-          </div>
-          <span
-            className={`filtros-estado ${alterado ? "pendente" : ""}`}
-            role="status"
-            aria-live="polite"
-          >
-            {alterado
-              ? "Alterações ainda não aplicadas"
-              : carregando
-                ? "Atualizando resultados…"
-                : ""}
+          {filtrosAtivos.map((filtro) => (
+            <button
+              type="button"
+              className="chip"
+              key={filtro.chave}
+              aria-label={`Remover filtro ${filtro.rotulo}`}
+              onClick={() => onRemoverFiltro(filtro.chave)}
+            >
+              {filtro.rotulo}
+              <Icone nome="fechar" tamanho={12} />
+            </button>
+          ))}
+          <span className="filtros-estado" role="status" aria-live="polite">
+            {alterado ? "Alterações ainda não aplicadas" : carregando ? "Atualizando…" : ""}
           </span>
         </div>
       )}

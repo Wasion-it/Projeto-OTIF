@@ -1,223 +1,120 @@
-import { CaretRight, Clock, Hourglass, Package, Warning } from "@phosphor-icons/react";
-import MetricCard from "../components/MetricCard.jsx";
-import MetaChip from "../components/MetaChip.jsx";
-import Regua from "../components/Regua.jsx";
+import PeriodoRapido from "../components/PeriodoRapido.jsx";
 import OtifTrend from "../components/OtifTrend.jsx";
+import GargaloEtapas from "../components/GargaloEtapas.jsx";
 import MotivosFalha from "../components/MotivosFalha.jsx";
 import OtifClientes from "../components/OtifClientes.jsx";
-import PeriodoRapido from "../components/PeriodoRapido.jsx";
-import { META_OTIF_PADRAO, fmtInteiro, tom, fmtPct } from "../lib/format.js";
+import { META_OTIF_PADRAO, fmtInteiro, fmtPct } from "../lib/format.js";
 
-function SkeletonStrip() {
+function Link({ children, onClick, tom }) {
   return (
-    <div className="sk-strip" aria-hidden="true">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <div className="sk-seg" key={i}>
-          <div className="skeleton sk-line" style={{ width: "40%" }} />
-          <div className="skeleton sk-line big" />
-          <div className="skeleton sk-line" style={{ width: "75%", marginBottom: 0 }} />
-        </div>
-      ))}
-    </div>
+    <button type="button" className={`link-pedido ${tom ? `tom-${tom}` : ""}`} onClick={onClick}>
+      {children}
+    </button>
   );
 }
 
-// Proporção dos pendentes por situação numa única barra. A faixa zebrada é a
-// mesma usada nas linhas vencidas da tabela: um só sinal para "prazo estourado".
-function DistribuicaoPendentes({ vencidos, atencao, noPrazo }) {
-  const total = vencidos + atencao + noPrazo;
-  if (total === 0) return null;
-  const partes = [
-    { cls: "d-ruim", n: vencidos, rotulo: "vencidos" },
-    { cls: "d-medio", n: atencao, rotulo: "em atenção" },
-    { cls: "d-bom", n: noPrazo, rotulo: "no prazo" },
-  ].filter((p) => p.n > 0);
-
-  const descricao = partes
-    .map((p) => `${fmtInteiro(p.n)} ${p.rotulo} (${fmtPct((p.n / total) * 100)}%)`)
-    .join(", ");
-
-  return (
-    <div className="risk-dist" role="img" aria-label={`Distribuição dos pendentes: ${descricao}`}>
-      {partes.map((p) => (
-        <span
-          key={p.cls}
-          className={p.cls}
-          style={{ flexGrow: p.n }}
-          title={`${fmtInteiro(p.n)} ${p.rotulo}`}
-        />
-      ))}
-    </div>
-  );
-}
-
+// Resultado primeiro (OTIF contra a meta), depois onde está o trabalho e as
+// causas. Cada número que leva a uma lista de pedidos é clicável.
 export default function VisaoGeral({
   metricas,
   tendencia,
   clientes,
+  processo,
   carregando,
   filtros,
   meta = META_OTIF_PADRAO,
   diasAlerta = 7,
   onPeriodo,
   onRemoverCliente,
-  onDrillSituacao,
-  onDrillSemContractDate,
+  onAbrirPedidos,
 }) {
-  const semContractDate = metricas?.total_sem_contract_date || 0;
-
   return (
     <>
-      <PeriodoRapido
-        filtros={filtros}
-        onPeriodo={onPeriodo}
-        onRemoverCliente={onRemoverCliente}
-      />
+      <PeriodoRapido filtros={filtros} onPeriodo={onPeriodo} onRemoverCliente={onRemoverCliente} />
 
       {!metricas ? (
         carregando ? (
-          <SkeletonStrip />
+          <div className="resumo" aria-hidden="true">
+            <span className="esqueleto esqueleto-grande" />
+            <span className="esqueleto" />
+          </div>
         ) : null
       ) : (
         <>
-          <section className="kpi-strip" aria-label="Indicadores do recorte">
-            <MetricCard
-              hero
-              titulo="OTIF no recorte"
-              valor={fmtPct(metricas.otif_pct)}
-              sufixo="%"
-              tom={tom(metricas.otif_pct, meta)}
-              rodape={
-                <>
-                  <Regua
-                    valor={metricas.otif_pct}
-                    meta={meta}
-                    tom={tom(metricas.otif_pct, meta)}
-                  />
-                  <MetaChip pct={metricas.otif_pct} meta={meta} />
-                  <div className="metric-sub">
-                    {fmtInteiro(metricas.otif_ok)} de {fmtInteiro(metricas.total_avaliados)}{" "}
-                    pedidos entregues no prazo e completos
-                  </div>
-                </>
-              }
-            />
-            <MetricCard
-              titulo="On Time"
-              icone={<Clock size={16} aria-hidden="true" />}
-              valor={fmtPct(metricas.on_time_pct)}
-              sufixo="%"
-              tom={tom(metricas.on_time_pct, meta)}
-              rodape={
-                <>
-                  <Regua
-                    valor={metricas.on_time_pct}
-                    meta={meta}
-                    tom={tom(metricas.on_time_pct, meta)}
-                  />
-                  <div className="metric-sub">entregas até o Contract Date</div>
-                </>
-              }
-            />
-            <MetricCard
-              titulo="In Full"
-              icone={<Package size={16} aria-hidden="true" />}
-              valor={fmtPct(metricas.in_full_pct)}
-              sufixo="%"
-              tom={tom(metricas.in_full_pct, meta)}
-              rodape={
-                <>
-                  <Regua
-                    valor={metricas.in_full_pct}
-                    meta={meta}
-                    tom={tom(metricas.in_full_pct, meta)}
-                  />
-                  <div className="metric-sub">entregas completas, sem falta ou avaria</div>
-                </>
-              }
-            />
-            <MetricCard
-              titulo="Pendentes"
-              icone={<Hourglass size={16} aria-hidden="true" />}
-              valor={fmtInteiro(metricas.total_pendentes)}
-              tom="neutro"
-              rodape="pedidos ainda sem resultado de OTIF"
-            />
-          </section>
-
-          {semContractDate > 0 && (
-            <button type="button" className="contract-date-alert" onClick={onDrillSemContractDate}>
-              <span className="contract-date-alert-count">{fmtInteiro(semContractDate)}</span>
-              <span>
-                <strong>
-                  {semContractDate === 1
-                    ? "pedido sem Contract Date"
-                    : "pedidos sem Contract Date"}
-                </strong>
-                <small>
-                  Corrija a data de entrega no pedido do JUND. Esses pedidos ficam fora das
-                  taxas.
-                </small>
+          <section className="resumo" aria-labelledby="resumo-titulo">
+            <h2 id="resumo-titulo" className="sr-only">
+              Resultado do recorte
+            </h2>
+            <div className="resumo-principal">
+              <span className="resumo-rotulo">OTIF</span>
+              <span className={`numero-principal ${metricas.otif_pct >= meta ? "tom-ok" : "tom-erro"}`}>
+                {fmtPct(metricas.otif_pct)}%
               </span>
-              <span className="contract-date-alert-action">
-                Ver pedidos
-                <CaretRight size={14} weight="bold" aria-hidden="true" />
-              </span>
-            </button>
-          )}
-
-          <section className="risk-block" aria-labelledby="risco-titulo">
-            <div className="risk-head">
-              <h2 className="risk-head-titulo" id="risco-titulo">
-                Pendentes por Contract Date
-              </h2>
-              <span className="risk-sub">
-                Atenção quando faltam até {diasAlerta} dias. Clique numa faixa para abrir a
-                lista.
+              <span className="txt-sec">
+                meta {fmtPct(meta)}% ·{" "}
+                {metricas.otif_pct >= meta
+                  ? "na meta"
+                  : `${fmtPct(Math.round((meta - metricas.otif_pct) * 10) / 10)} p.p. abaixo`}{" "}
+                · {fmtInteiro(metricas.otif_ok)} de {fmtInteiro(metricas.total_avaliados)} avaliados
               </span>
             </div>
-            <DistribuicaoPendentes
-              vencidos={metricas.pendentes_vencidos || 0}
-              atencao={metricas.pendentes_atencao || 0}
-              noPrazo={metricas.pendentes_no_prazo || 0}
-            />
-            <div className="risk-bar">
-              <MetricCard
-                className="risk-item"
-                titulo="Vencidos"
-                icone={<Warning size={16} weight="fill" color="var(--danger)" aria-hidden="true" />}
-                valor={fmtInteiro(metricas.pendentes_vencidos)}
-                tom="ruim"
-                rodape="Contract Date ultrapassado"
-                onClick={() => onDrillSituacao("vencido")}
-              />
-              <MetricCard
-                className="risk-item"
-                titulo="Atenção"
-                icone={<Clock size={16} weight="fill" color="var(--warning-solid)" aria-hidden="true" />}
-                valor={fmtInteiro(metricas.pendentes_atencao)}
-                tom="medio"
-                rodape={`faltam até ${diasAlerta} dias`}
-                onClick={() => onDrillSituacao("atencao")}
-              />
-              <MetricCard
-                className="risk-item"
-                titulo="No prazo"
-                icone={<Clock size={16} color="var(--success)" aria-hidden="true" />}
-                valor={fmtInteiro(metricas.pendentes_no_prazo)}
-                tom="bom"
-                rodape="com folga até o Contract Date"
-                onClick={() => onDrillSituacao("no_prazo")}
-              />
-            </div>
+            <dl className="resumo-secundario">
+              <div>
+                <dt>On Time</dt>
+                <dd>{fmtPct(metricas.on_time_pct)}%</dd>
+              </div>
+              <div>
+                <dt>In Full</dt>
+                <dd>{fmtPct(metricas.in_full_pct)}%</dd>
+              </div>
+              <div>
+                <dt>Pendentes</dt>
+                <dd>
+                  <Link onClick={() => onAbrirPedidos({ status: "pendente" })}>
+                    {fmtInteiro(metricas.total_pendentes)}
+                  </Link>
+                </dd>
+              </div>
+            </dl>
+            <p className="resumo-pendentes">
+              Dos pendentes:{" "}
+              <Link tom="erro" onClick={() => onAbrirPedidos({ situacao_prazo: "vencido" })}>
+                {fmtInteiro(metricas.pendentes_vencidos)} vencidos
+              </Link>
+              {" · "}
+              <Link tom="atencao" onClick={() => onAbrirPedidos({ situacao_prazo: "atencao" })}>
+                {fmtInteiro(metricas.pendentes_atencao)} vencem em até {diasAlerta} dias
+              </Link>
+              {" · "}
+              <Link onClick={() => onAbrirPedidos({ situacao_prazo: "no_prazo" })}>
+                {fmtInteiro(metricas.pendentes_no_prazo)} no prazo
+              </Link>
+              {metricas.total_sem_contract_date > 0 && (
+                <>
+                  {" · "}
+                  <Link tom="atencao" onClick={() => onAbrirPedidos({ status: "sem_contract_date" })}>
+                    {fmtInteiro(metricas.total_sem_contract_date)} sem Contract Date
+                  </Link>{" "}
+                  <span className="txt-sec">(fora das taxas até a correção no JUND)</span>
+                </>
+              )}
+            </p>
           </section>
 
           <OtifTrend dados={tendencia} meta={meta} />
 
-          <section className="panels-2">
-            <MotivosFalha motivos={metricas.motivos_falha} />
-            <OtifClientes clientes={clientes} meta={meta} />
-          </section>
+          <div className="grade-2">
+            <GargaloEtapas
+              processo={processo}
+              onAbrirEtapa={(etapa) => onAbrirPedidos({ etapa })}
+            />
+            <MotivosFalha
+              motivos={metricas.motivos_falha}
+              onVerFalhas={() => onAbrirPedidos({ status: "falha" })}
+            />
+          </div>
+
+          <OtifClientes clientes={clientes} onAbrirCliente={(cliente) => onAbrirPedidos({ cliente })} />
         </>
       )}
     </>

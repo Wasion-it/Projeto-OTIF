@@ -72,6 +72,30 @@ ORDER_PADRAO = "asc"
 SORT_PADRAO = "prazo"
 
 
+ETAPAS_FILTRAVEIS = frozenset(ETAPA_RANK)
+
+
+def filtrar_resultados(
+    resultados: list[ResultadoPedido],
+    *,
+    status: str | None = None,
+    situacao_prazo: str | None = None,
+    etapa: str | None = None,
+) -> list[ResultadoPedido]:
+    """Aplica os filtros pos-avaliacao (status, situacao do prazo e etapa atual).
+
+    `etapa` aceita as chaves de ETAPA_RANK, incluindo "concluido". Valor
+    desconhecido e ignorado para nao esvaziar a lista por um parametro invalido.
+    """
+    if status:
+        resultados = [r for r in resultados if r.status == status]
+    if situacao_prazo:
+        resultados = [r for r in resultados if r.situacao_prazo == situacao_prazo]
+    if etapa and etapa in ETAPAS_FILTRAVEIS:
+        resultados = [r for r in resultados if _etapa_atual(r) == etapa]
+    return resultados
+
+
 def _vazio(v: object) -> bool:
     return v is None or v == ""
 

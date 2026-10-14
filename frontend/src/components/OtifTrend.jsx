@@ -1,103 +1,75 @@
 import { useRef, useState } from "react";
-import { ArrowDownRight, ArrowUpRight } from "@phosphor-icons/react";
 import { useLarguraElemento } from "../hooks/useLarguraElemento.js";
 import { fmtInteiro, fmtPct } from "../lib/format.js";
 
 const ALTURA = 200;
-const RECUO = 22; // folga lateral para o primeiro e o último ponto não colarem na borda
+const MARGEM_X = 24;
+const MARGEM_TOPO = 18;
+const N_MINIMO = 5; // abaixo disso o percentual do mês é pouco confiável
+
+const SERIES = [
+  { chave: "on_time_pct", nome: "On Time", classe: "serie-ontime" },
+  { chave: "in_full_pct", nome: "In Full", classe: "serie-infull" },
+];
 
 function fmtMes(mes) {
-  // "2026-08" -> "08/26"
   return `${mes.slice(5, 7)}/${mes.slice(2, 4)}`;
 }
 
-// A escala começa um pouco abaixo do menor valor (ou da meta) em vez de zero:
-// com valores entre 88% e 97%, uma escala 0–100 achata justamente a variação
-// que interessa.
+// Escala a partir de um pouco abaixo do menor valor (ou da meta): uma escala
+// 0–100 achataria justamente a variação que interessa.
 function escala(valores, meta) {
   const minimo = Math.min(...valores, meta);
-  const base = Math.max(0, Math.floor(minimo - 4));
-  const yMin = base >= 98 ? 90 : base;
-  return { yMin, yMax: 100 };
+  return { yMin: Math.max(0, Math.floor((minimo - 5) / 10) * 10), yMax: 100 };
 }
 
 export default function OtifTrend({ dados, meta = 95 }) {
   const plotRef = useRef(null);
   const largura = useLarguraElemento(plotRef);
   const [ativo, setAtivo] = useState(null);
+  const [extras, setExtras] = useState({ on_time_pct: false, in_full_pct: false });
 
   const pontos = (dados || []).filter((d) => d.total_avaliados > 0);
-  const ultimo = pontos[pontos.length - 1];
-  const anterior = pontos[pontos.length - 2];
-  const delta =
-    ultimo && anterior ? Math.round((ultimo.otif_pct - anterior.otif_pct) * 10) / 10 : null;
+  const valores = pontos.flatMap((d) => [
+    d.otif_pct,
+    ...SERIES.filter((s) => extras[s.chave]).map((s) => d[s.chave]),
+  ]);
+  const { yMin, yMax } = pontos.length ? escala(valores, meta) : { yMin: 0, yMax: 100 };
 
-  const { yMin, yMax } = pontos.length
-    ? escala(
-        pontos.map((d) => d.otif_pct),
-        meta
-      )
-    : { yMin: 0, yMax: 100 };
-
-  const razao = (valor) => (valor - yMin) / (yMax - yMin);
-  const posY = (valor) => ALTURA - razao(valor) * ALTURA;
-  const posX = (indice) =>
-    pontos.length === 1
-      ? largura / 2
-      : RECUO + (indice * (largura - RECUO * 2)) / (pontos.length - 1);
-
-  const coordenadas = pontos.map((d, i) => ({ x: posX(i), y: posY(d.otif_pct), d }));
-  const linha = coordenadas.map((p) => `${p.x},${p.y}`).join(" ");
-  const area = coordenadas.length
-    ? [
-        `M${coordenadas[0].x},${ALTURA}`,
-        ...coordenadas.map((p) => `L${p.x},${p.y}`),
-        `L${coordenadas[coordenadas.length - 1].x},${ALTURA}`,
-        "Z",
-      ].join(" ")
-    : "";
+  const posY = (v) => MARGEM_TOPO + (1 - (v - yMin) / (yMax - yMin)) * (ALTURA - MARGEM_TOPO);
+  const posX = (i) =>
+    pontos.length === 1 ? largura / 2 : MARGEM_X + (i * (largura - MARGEM_X * 2)) / (pontos.length - 1);
+  const linhaDe = (chave) => pontos.map((d, i) => `${posX(i)},${posY(d[chave])}`).join(" ");
   const yMeta = posY(meta);
-  const grade = [yMin, Math.round((yMin + yMax) / 2), yMax];
-  const pontoAtivo = ativo != null ? coordenadas[ativo] : null;
+  const pontoAtivo = ativo != null ? pontos[ativo] : null;
 
   return (
-    <section className="panel" aria-labelledby="otif-mes-titulo">
-      <div className="panel-head">
-        <h3 id="otif-mes-titulo">OTIF por mês</h3>
-        {ultimo && (
-          <span className="panel-hint">
-            {fmtMes(ultimo.mes)}: <b>{fmtPct(ultimo.otif_pct)}%</b>
-            {delta != null && (
-              <span className={delta >= 0 ? "up" : "down"}>
-                {delta >= 0 ? (
-                  <ArrowUpRight size={13} weight="bold" aria-hidden="true" />
-                ) : (
-                  <ArrowDownRight size={13} weight="bold" aria-hidden="true" />
-                )}
-                {fmtPct(Math.abs(delta))} p.p.
-                <span className="sr-only">
-                  {delta >= 0 ? "acima" : "abaixo"} do mês anterior
-                </span>
-              </span>
-            )}
-          </span>
-        )}
+    <section className="bloco" aria-labelledby="otif-mes-titulo">
+      <div className="secao-titulo">
+        <h2 id="otif-mes-titulo">OTIF por mês de digitação</h2>
+        <div className="serie-toggles">
+          {SERIES.map((s) => (
+            <label key={s.chave} className="opcao">
+              <input
+                type="checkbox"
+                checked={extras[s.chave]}
+                onChange={(e) => setExtras((x) => ({ ...x, [s.chave]: e.target.checked }))}
+              />
+              <span>{s.nome}</span>
+            </label>
+          ))}
+        </div>
       </div>
 
       {pontos.length === 0 ? (
-        <p className="vazio">Sem meses com pedidos avaliados no período selecionado.</p>
+        <p className="txt-sec">Nenhum mês com pedidos avaliados no período.</p>
       ) : (
         <>
           <div className="grafico">
             <div className="grafico-y" style={{ height: ALTURA }} aria-hidden="true">
-              {/* Meta colada no topo: o rótulo da meta basta, 100% sairia sobreposto. */}
-              {yMeta > 16 && <span style={{ top: 0 }}>{yMax}%</span>}
-              <span className="grafico-y-meta" style={{ top: `${(1 - razao(meta)) * 100}%` }}>
-                {meta}%
-              </span>
-              <span style={{ top: "100%" }}>{yMin}%</span>
+              <span style={{ top: posY(yMax) }}>{yMax}%</span>
+              <span style={{ top: posY(yMin) }}>{yMin}%</span>
             </div>
-
             <div
               className="grafico-plot"
               ref={plotRef}
@@ -105,132 +77,112 @@ export default function OtifTrend({ dados, meta = 95 }) {
               onMouseLeave={() => setAtivo(null)}
             >
               {largura > 0 && (
-                <svg
-                  width={largura}
-                  height={ALTURA}
-                  role="group"
-                  aria-label={`Evolução do OTIF por mês. Último mês ${fmtMes(
-                    ultimo.mes
-                  )} com ${fmtPct(ultimo.otif_pct)} por cento. Meta ${meta} por cento.`}
-                >
-                  <defs>
-                    <linearGradient id="grad-otif" x1="0" x2="0" y1="0" y2="1">
-                      <stop offset="0%" stopColor="#2f49c6" stopOpacity="0.18" />
-                      <stop offset="100%" stopColor="#2f49c6" stopOpacity="0" />
-                    </linearGradient>
-                  </defs>
-                  {grade.map((g) => (
-                    <line
-                      key={g}
-                      className="grafico-grade"
-                      x1={0}
-                      x2={largura}
-                      y1={posY(g)}
-                      y2={posY(g)}
-                    />
+                <svg width={largura} height={ALTURA} aria-hidden="true">
+                  <line className="grafico-base" x1={0} x2={largura} y1={posY(yMin)} y2={posY(yMin)} />
+                  <line className="grafico-meta" x1={0} x2={largura} y1={yMeta} y2={yMeta} />
+                  {/* Rótulo da meta à esquerda: o último mês costuma ficar perto de 100%. */}
+                  <text className="grafico-meta-rotulo" x={4} y={yMeta - 6} textAnchor="start">
+                    meta {fmtPct(meta)}%
+                  </text>
+                  {SERIES.filter((s) => extras[s.chave] && pontos.length > 1).map((s) => (
+                    <polyline key={s.chave} className={`grafico-serie ${s.classe}`} points={linhaDe(s.chave)} />
                   ))}
-                  <rect
-                    className="grafico-zona-abaixo"
-                    x={0}
-                    y={yMeta}
-                    width={largura}
-                    height={Math.max(0, ALTURA - yMeta)}
-                  />
-                  <line
-                    className="grafico-meta"
-                    x1={0}
-                    x2={largura}
-                    y1={yMeta}
-                    y2={yMeta}
-                  />
-                  <path className="grafico-area" d={area} />
-                  {coordenadas.length > 1 && (
-                    <polyline className="grafico-linha" points={linha} />
+                  {pontos.length > 1 && (
+                    <polyline className="grafico-linha" points={linhaDe("otif_pct")} />
                   )}
-                  {coordenadas.map((p, i) => {
-                    const abaixo = p.d.otif_pct < meta;
-                    const derradeiro = i === coordenadas.length - 1;
-                    const destaque = derradeiro || ativo === i;
+                  {pontos.map((d, i) => {
+                    const abaixo = d.otif_pct < meta;
+                    const pouco = d.total_avaliados < N_MINIMO;
+                    const x = posX(i);
+                    const y = posY(d.otif_pct);
                     return (
-                      <g key={p.d.mes}>
+                      <g key={d.mes}>
                         <circle
-                          className={`grafico-ponto ${abaixo ? "abaixo" : ""} ${
-                            destaque ? "ultimo" : ""
-                          }`}
-                          cx={p.x}
-                          cy={p.y}
-                          r={destaque ? 5 : 3.5}
+                          className={`grafico-ponto ${abaixo ? "abaixo" : "acima"} ${pouco ? "pouco" : ""}`}
+                          cx={x}
+                          cy={y}
+                          r={ativo === i ? 5 : 4}
                         />
-                        {coordenadas.length <= 14 && (
-                          <text
-                            className={`grafico-valor ${abaixo ? "abaixo" : ""}`}
-                            x={p.x}
-                            y={p.y < 20 ? p.y + 19 : p.y - 11}
-                            textAnchor="middle"
-                            aria-hidden="true"
-                          >
-                            {Math.round(p.d.otif_pct)}
-                          </text>
-                        )}
-                        {/* Alvo maior que o ponto: hover, toque e foco por teclado */}
-                        <circle
-                          className="grafico-alvo"
-                          cx={p.x}
-                          cy={p.y}
-                          r={14}
-                          tabIndex={0}
-                          role="img"
-                          aria-label={`${fmtMes(p.d.mes)}: ${fmtPct(
-                            p.d.otif_pct
-                          )}% de OTIF em ${p.d.total_avaliados} pedidos avaliados${
-                            abaixo ? ", abaixo da meta" : ""
-                          }`}
+                        {/* Último ponto: rótulo ao lado, à esquerda, para não cruzar a meta. */}
+                        <text
+                          className="grafico-valor"
+                          x={i === pontos.length - 1 && pontos.length > 1 ? x - 10 : x}
+                          y={
+                            i === pontos.length - 1 && pontos.length > 1
+                              ? y + 4
+                              : y < 34
+                                ? y + 20
+                                : y - 10
+                          }
+                          textAnchor={i === pontos.length - 1 && pontos.length > 1 ? "end" : "middle"}
+                        >
+                          {Math.round(d.otif_pct)}
+                          {pouco ? ` (n=${d.total_avaliados})` : ""}
+                        </text>
+                        <rect
+                          x={x - 16}
+                          y={0}
+                          width={32}
+                          height={ALTURA}
+                          fill="transparent"
                           onMouseEnter={() => setAtivo(i)}
-                          onFocus={() => setAtivo(i)}
-                          onBlur={() => setAtivo(null)}
                         />
                       </g>
                     );
                   })}
                 </svg>
               )}
-
               {pontoAtivo && (
                 <div
                   className="grafico-tooltip"
-                  style={{ left: pontoAtivo.x, top: pontoAtivo.y }}
+                  style={{ left: posX(ativo), top: posY(pontoAtivo.otif_pct) }}
                   aria-hidden="true"
                 >
-                  {fmtMes(pontoAtivo.d.mes)}
-                  <strong className={pontoAtivo.d.otif_pct < meta ? "abaixo" : ""}>
-                    {fmtPct(pontoAtivo.d.otif_pct)}%
-                  </strong>
-                  {fmtInteiro(pontoAtivo.d.total_avaliados)} pedidos avaliados
+                  <strong>{fmtMes(pontoAtivo.mes)}</strong>
+                  <span>OTIF {fmtPct(pontoAtivo.otif_pct)}%</span>
+                  <span>On Time {fmtPct(pontoAtivo.on_time_pct)}%</span>
+                  <span>In Full {fmtPct(pontoAtivo.in_full_pct)}%</span>
+                  <span>{fmtInteiro(pontoAtivo.total_avaliados)} avaliados</span>
                 </div>
               )}
             </div>
-
             <div className="grafico-x" aria-hidden="true">
               {largura > 0 &&
-                coordenadas.map((p) => (
-                  <span key={p.d.mes} style={{ left: p.x }}>
-                    {fmtMes(p.d.mes)}
+                pontos.map((d, i) => (
+                  <span key={d.mes} style={{ left: posX(i) }}>
+                    {fmtMes(d.mes)}
                   </span>
                 ))}
             </div>
           </div>
+          <p className="legenda">
+            Ponto vazado: menos de {N_MINIMO} pedidos avaliados no mês. Vermelho: abaixo da meta.
+          </p>
 
-          <div className="grafico-legenda" aria-hidden="true">
-            <span>
-              <i className="leg-linha" /> OTIF do mês
-            </span>
-            <span>
-              <i className="leg-meta" /> Meta {fmtPct(meta)}%
-            </span>
-            <span>
-              <i className="leg-abaixo" /> Mês abaixo da meta
-            </span>
-          </div>
+          {/* Alternativa textual do gráfico para leitores de tela. */}
+          <table className="sr-only">
+            <caption>OTIF por mês de digitação</caption>
+            <thead>
+              <tr>
+                <th>Mês</th>
+                <th>OTIF</th>
+                <th>On Time</th>
+                <th>In Full</th>
+                <th>Avaliados</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pontos.map((d) => (
+                <tr key={d.mes}>
+                  <td>{fmtMes(d.mes)}</td>
+                  <td>{fmtPct(d.otif_pct)}%</td>
+                  <td>{fmtPct(d.on_time_pct)}%</td>
+                  <td>{fmtPct(d.in_full_pct)}%</td>
+                  <td>{d.total_avaliados}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </>
       )}
     </section>

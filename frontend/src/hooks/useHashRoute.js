@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 
-export const ROTAS_VALIDAS = ["visao-geral", "pedidos", "ajustes"];
+export const ROTAS_VALIDAS = ["pedidos", "visao-geral", "ajustes"];
+// Pedidos é a tela de trabalho de todos os perfis, então é a entrada.
+const ROTA_PADRAO = "pedidos";
 
 function rotaAtual() {
   const h = window.location.hash.replace(/^#\/?/, "");
-  return ROTAS_VALIDAS.includes(h) ? h : "visao-geral";
+  return ROTAS_VALIDAS.includes(h) ? h : ROTA_PADRAO;
 }
 
 // Roteamento leve por hash (sem dependência externa). Suporta back/forward do navegador

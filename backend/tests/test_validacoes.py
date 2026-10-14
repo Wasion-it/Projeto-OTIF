@@ -171,8 +171,8 @@ def test_etapas_fora_de_ordem_falha():
         )
 
 
-def test_lem_antes_do_inicio_mais_tardio_falha():
-    with pytest.raises(ValidacaoError, match="inicio do LEM"):
+def test_lem_antes_do_fim_da_producao_falha():
+    with pytest.raises(ValidacaoError, match="fim da Producao"):
         validar_etapas(
             data_pedido=date(2026, 1, 1),
             pcp_data=date(2026, 1, 3),
@@ -182,6 +182,30 @@ def test_lem_antes_do_inicio_mais_tardio_falha():
             lem_data=date(2026, 1, 18),
             hoje=date(2026, 2, 1),
         )
+
+
+def test_lem_pode_ser_antes_da_data_agendada():
+    validar_etapas(
+        data_pedido=date(2026, 1, 1),
+        pcp_data=date(2026, 1, 3),
+        producao_fim=date(2026, 1, 10),
+        comercial_data=date(2026, 1, 5),
+        inspecao_agendada_data=date(2026, 1, 25),
+        lem_data=date(2026, 1, 12),
+        hoje=date(2026, 2, 1),
+    )
+
+
+def test_lem_pode_ser_depois_da_data_agendada():
+    validar_etapas(
+        data_pedido=date(2026, 1, 1),
+        pcp_data=date(2026, 1, 3),
+        producao_fim=date(2026, 1, 10),
+        comercial_data=date(2026, 1, 5),
+        inspecao_agendada_data=date(2026, 1, 12),
+        lem_data=date(2026, 1, 15),
+        hoje=date(2026, 2, 1),
+    )
 
 
 def test_comercial_pode_agendar_sem_producao_concluida():
@@ -205,7 +229,7 @@ def test_comercial_pode_ter_agendado_antes_do_fim_da_producao():
 
 
 def test_lem_nao_pode_iniciar_antes_da_producao_quando_ela_termina_depois():
-    with pytest.raises(ValidacaoError, match="inicio do LEM"):
+    with pytest.raises(ValidacaoError, match="fim da Producao"):
         validar_etapas(
             data_pedido=date(2026, 1, 1),
             pcp_data=date(2026, 1, 3),
