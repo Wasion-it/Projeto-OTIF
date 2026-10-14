@@ -1,0 +1,17 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "frontend: garantir dependencias",
+      "detail": "Roda npm ci somente se o node_modules estiver ausente ou incompleto (sem o Vite).",
+      "type": "shell",
+      "command": "if (-not (Test-Path 'node_modules/.bin/vite.cmd')) { npm ci } else { Write-Host 'node_modules OK' }",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend",
+        "shell": { "executable": "pwsh", "args": ["-NoProfile", "-Command"] }
+      },
+      "presentation": { "reveal": "silent", "panel": "shared" },
+      "problemMatcher": []
+    }
+  ]
+}

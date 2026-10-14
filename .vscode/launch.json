@@ -28,8 +28,9 @@
       "name": "Frontend: Vite dev",
       "type": "node-terminal",
       "request": "launch",
-      "command": "npm run dev",
-      "cwd": "${workspaceFolder}/frontend"
+      "command": "npm run dev -- --strictPort",
+      "cwd": "${workspaceFolder}/frontend",
+      "preLaunchTask": "frontend: garantir dependencias"
     }
   ],
   "compounds": [
