@@ -1,4 +1,6 @@
-const BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
+// VITE_API_URL ausente -> backend local de dev; definido como "" (build Docker)
+// -> chamadas relativas na mesma origem, via proxy reverso do Nginx.
+const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 const getsEmAndamento = new Map();
 
 function qs(params) {

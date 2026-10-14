@@ -38,15 +38,24 @@ class Settings(BaseSettings):
     jundsoft_user: str = ""
     jundsoft_password: str = ""
     jundsoft_odbc_driver: str = "SQL Server"
+    # Parametros ODBC extras anexados ao final da string (opcional, padrao vazio).
+    # Ex. para o "ODBC Driver 18 for SQL Server" (Linux/container), que usa
+    # Encrypt=yes com validacao de certificado por padrao:
+    #   Encrypt=yes;TrustServerCertificate=yes
+    jundsoft_odbc_extra: str = ""
 
     @property
     def jundsoft_conn_str(self) -> str:
         """String de conexao pyodbc para o Jundsoft."""
-        return (
+        conn_str = (
             f"DRIVER={{{self.jundsoft_odbc_driver}}};"
             f"SERVER={self.jundsoft_host};DATABASE={self.jundsoft_db};"
             f"UID={self.jundsoft_user};PWD={self.jundsoft_password}"
         )
+        extra = self.jundsoft_odbc_extra.strip().strip(";")
+        if extra:
+            conn_str += f";{extra}"
+        return conn_str
 
     # Origens liberadas no CORS (frontend).
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"

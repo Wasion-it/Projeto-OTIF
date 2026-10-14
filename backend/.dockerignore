@@ -1,0 +1,40 @@
+# Segredos / configuracao local (nunca entram na imagem)
+.env
+.env.*
+*.env
+!.env.example
+
+# Ambientes virtuais
+.venv/
+venv/
+
+# Bancos SQLite locais e backups
+*.db
+*.db.bak
+*.sqlite
+*.sqlite3
+*.sqlite-*
+
+# Caches / artefatos Python
+__pycache__/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+*.egg-info/
+
+# Testes nao sao necessarios na imagem de runtime
+tests/
+pytest.ini
+
+# Diversos
+*.log
+*.tmp
+Dockerfile
+.dockerignore
+.git/
+.vscode/

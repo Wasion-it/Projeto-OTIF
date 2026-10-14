@@ -1,0 +1,25 @@
+# Dependencias e build local (reinstalados/gerados dentro da imagem)
+node_modules/
+dist/
+.vite/
+.cache/
+*.tsbuildinfo
+
+# Segredos / configuracao local
+.env
+.env.*
+*.env
+!.env.example
+
+# Artefatos temporarios / de smoke test
+_smoke_out/
+_smoke.jsx
+_dom_*.html
+*.log
+npm-debug.log*
+
+# Diversos
+Dockerfile
+.dockerignore
+.git/
+.vscode/

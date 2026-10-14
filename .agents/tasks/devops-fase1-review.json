@@ -1,0 +1,30 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    {
+      "id": 1,
+      "blocking": false,
+      "confidence": "confirmed",
+      "title": "Justificar a alteracao em backend/app/config.py no relatorio final",
+      "detail": "config.py ganhou jundsoft_odbc_extra (padrao vazio) anexado a jundsoft_conn_str. A mudanca e estritamente de container (parametros TLS do ODBC Driver 18), nao altera a string atual e esta coberta por backend/tests/test_config.py. Nenhum arquivo de dominio, query ou migration foi tocado.",
+      "fix": "No relatorio final ao usuario, explicar por que config.py foi alterado e citar o teste que garante a string inalterada sem o extra."
+    },
+    {
+      "id": 2,
+      "blocking": false,
+      "confidence": "likely",
+      "title": "Saidas reais de validacao precisam constar no relatorio ao usuario",
+      "detail": "A mensagem final do coder nao chegou a esta etapa. As imagens otif-backend:dev/otif-frontend:dev foram reconstruidas (09:23) depois da ultima edicao (09:16) e o volume otif_postgres_data existe, o que indica que build/up rodaram. A stack esta parada agora, entao /health nao foi confirmado nesta revisao.",
+      "fix": "Incluir no relatorio final as saidas reais de python -m pytest -q, npm ci, npm run build, docker compose config/build/up -d/ps, curl http://localhost:8000/health e curl http://localhost:8080/health (proxy)."
+    },
+    {
+      "id": 3,
+      "blocking": false,
+      "confidence": "confirmed",
+      "title": "pytest instalado na imagem de runtime",
+      "detail": "backend/Dockerfile instala o requirements.txt inteiro, que inclui pytest==8.3.4 (dependencia so de teste). Faker e usado em runtime por erp_sync.py.",
+      "fix": "Numa fase futura, separar requirements-dev.txt (ou filtrar pytest no build) para a imagem de runtime instalar so as dependencias necessarias."
+    }
+  ],
+  "reviewDoc": "c:\\Projects\\Projeto-OTIF\\.agents\\tasks\\devops-fase1-review.md"
+}

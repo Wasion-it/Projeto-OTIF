@@ -1,0 +1,93 @@
+# ---------------------------------------------------------------------------
+# OTIF - stack de DESENVOLVIMENTO / VALIDACAO LOCAL.
+#
+# - otif-postgres existe apenas para DEV/local. Em producao o PostgreSQL e
+#   externo a stack da aplicacao.
+# - Este arquivo NAO e o deploy de producao (Docker Swarm sera tratado depois).
+# - Credenciais vem do arquivo .env (copie de .env.example). Nada real aqui.
+#
+# Uso:
+#   cp .env.example .env      # ajuste os valores
+#   docker compose up -d --build
+# ---------------------------------------------------------------------------
+
+name: otif
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "3"
+
+services:
+  otif-postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?defina POSTGRES_USER no .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}
+      POSTGRES_DB: ${POSTGRES_DB:-otif}
+    volumes:
+      - otif_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    logging: *default-logging
+
+  otif-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: otif-backend:dev
+    restart: unless-stopped
+    depends_on:
+      otif-postgres:
+        condition: service_healthy
+    environment:
+      # Montada a partir de POSTGRES_*; caracteres reservados na senha
+      # (@ : / # % ? &) precisam de URL-encoding. Alternativa: defina
+      # DATABASE_URL inteira no .env para sobrescrever.
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@otif-postgres:5432/${POSTGRES_DB:-otif}}
+      # DEV: aplica `alembic upgrade head` na subida (Postgres local nasce vazio).
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
+      ERP_SOURCE: ${ERP_SOURCE:-mock}
+      ERP_READ_MODE: ${ERP_READ_MODE:-direct}
+      JUNDSOFT_HOST: ${JUNDSOFT_HOST:-}
+      JUNDSOFT_DB: ${JUNDSOFT_DB:-jundsoft}
+      JUNDSOFT_USER: ${JUNDSOFT_USER:-}
+      JUNDSOFT_PASSWORD: ${JUNDSOFT_PASSWORD:-}
+      JUNDSOFT_ODBC_DRIVER: ${JUNDSOFT_ODBC_DRIVER:-ODBC Driver 18 for SQL Server}
+      # Ex.: Encrypt=yes;TrustServerCertificate=yes (certificado autoassinado).
+      JUNDSOFT_ODBC_EXTRA: ${JUNDSOFT_ODBC_EXTRA:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173,http://127.0.0.1:5173}
+    ports:
+      # A API ainda nao tem autenticacao: por padrao so escuta no loopback do
+      # host. O acesso pela rede passa pelo proxy do otif-frontend.
+      # Use BACKEND_BIND=0.0.0.0 apenas se precisar expor a API diretamente.
+      - "${BACKEND_BIND:-127.0.0.1}:${BACKEND_PORT:-8000}:8000"
+    logging: *default-logging
+
+  otif-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Vazio = SPA chama a mesma origem; o Nginx faz proxy para o backend.
+        VITE_API_URL: ${VITE_API_URL:-}
+    image: otif-frontend:dev
+    restart: unless-stopped
+    depends_on:
+      otif-backend:
+        condition: service_healthy
+    environment:
+      BACKEND_UPSTREAM: http://otif-backend:8000
+    ports:
+      - "${FRONTEND_PORT:-8080}:8080"
+    logging: *default-logging
+
+volumes:
+  otif_postgres_data:
+    name: otif_postgres_data

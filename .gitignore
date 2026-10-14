@@ -4,19 +4,33 @@ __pycache__/
 .venv/
 venv/
 *.egg-info/
-
-# App DB (mock)
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+# App DB (mock) / SQLite local
 *.db
+*.db.bak
+*.sqlite
 *.sqlite3
-
-# Env
+*.sqlite-*
+# Env (segredos locais). Os .env.example sao versionados.
 .env
-
+.env.*
+*.env
+!.env.example
+!**/.env.example
 # Node / frontend
 node_modules/
 dist/
 .vite/
-
+npm-debug.log*
+# Artefatos temporarios
+*.log
+*.tmp
+*.bak
 # Editor / OS
 .DS_Store
 Thumbs.db
