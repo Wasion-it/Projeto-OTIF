@@ -3,7 +3,7 @@ import SegmentosPedidos from "../components/SegmentosPedidos.jsx";
 import FiltrosPedidos from "../components/FiltrosPedidos.jsx";
 import ItensTable from "../components/ItensTable.jsx";
 import LoteBarra from "../components/LoteBarra.jsx";
-import { ETAPAS_LOTE } from "../lib/etapas.js";
+import { ETAPAS_LOTE, etapaEmLote } from "../lib/etapas.js";
 import { temFiltrosPedidos } from "../lib/pedidosFiltros.js";
 
 // Tela de trabalho de todos os perfis: onde cada pedido está (barra de etapas
@@ -40,7 +40,7 @@ export default function Pedidos({
   onLimparSelecao,
   onLoteConcluido,
 }) {
-  const etapaLote = ETAPAS_LOTE[filtros.etapa] ? filtros.etapa : null;
+  const etapaLote = etapaEmLote(filtros.etapa, itens);
   // Só pedidos da página atual (a seleção é limpa ao trocar página/filtro).
   const pedidosSelecionados = itens.filter(
     (it) => selecionados.has(it.pedido_id) && it.processo?.etapa_atual === etapaLote

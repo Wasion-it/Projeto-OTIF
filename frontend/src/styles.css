@@ -556,7 +556,7 @@ th[aria-sort] .th-ordenar { color: var(--n-900); }
   top: 0;
   right: 0;
   bottom: 0;
-  width: min(560px, 100%);
+  width: min(780px, 100%);
   display: flex;
   flex-direction: column;
   background: var(--n-0);
@@ -616,43 +616,106 @@ th[aria-sort] .th-ordenar { color: var(--n-900); }
 }
 .kv dt { color: var(--n-500); }
 
-/* Linha do tempo: marca preenchida = concluída, anel azul = atual. */
-.timeline { display: flex; flex-direction: column; }
-.tl-item { display: flex; gap: var(--sp-3); position: relative; padding-bottom: var(--sp-3); min-height: 32px; }
-.tl-item:not(:last-child)::before {
-  content: "";
-  position: absolute;
-  left: 8px;
-  top: 20px;
-  bottom: 0;
-  width: 1px;
-  background: var(--n-200);
-}
-.tl-marca {
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  width: 17px;
-  height: 17px;
-  margin-top: 2px;
-  border: 1px solid var(--n-400);
-  border-radius: 50%;
-  background: var(--n-0);
-  color: var(--n-0);
-}
-.tl-item.feita .tl-marca { background: var(--n-500); border-color: var(--n-500); }
-.tl-item.atual .tl-marca { border: 2px solid var(--primary); box-shadow: inset 0 0 0 3px var(--n-0); background: var(--primary); }
-.tl-corpo { flex: 1; min-width: 0; }
-.tl-linha { display: flex; justify-content: space-between; gap: var(--sp-3); }
-.tl-item:not(.feita):not(.atual) .tl-nome { color: var(--n-500); }
-.tl-dias { color: var(--n-500); white-space: nowrap; }
-.tl-info { font-size: var(--fs-rotulo); line-height: 16px; color: var(--n-500); }
 .tl-obs {
   margin-top: var(--sp-1);
   padding-left: var(--sp-2);
   border-left: 2px solid var(--n-200);
   color: var(--n-500);
 }
+
+/* Meta x realizado do pedido: faixa em dias corridos com Hoje e Contract Date. */
+.pp-resumo { margin-bottom: var(--sp-3); }
+
+.pp { table-layout: auto; }
+.pp th,
+.pp td { padding: 6px var(--sp-2); vertical-align: middle; }
+.pp tbody tr:hover td { background: transparent; }
+.pp .num { width: 72px; }
+
+.pp th.pp-etapa {
+  width: 232px;
+  height: auto;
+  padding-left: 0;
+  font-size: var(--fs-corpo);
+  line-height: 20px;
+  font-weight: 400;
+  color: var(--n-900);
+  white-space: normal;
+  text-align: left;
+  vertical-align: top;
+}
+.pp .pp-etapa > span { display: block; }
+.pp-nota { font-size: var(--fs-rotulo); line-height: 16px; color: var(--n-500); }
+.pp thead th { vertical-align: bottom; }
+.pp thead th.pp-etapa { vertical-align: bottom; font-size: var(--fs-rotulo); color: var(--n-500); font-weight: 500; }
+.pp-eixo { min-width: 220px; }
+.pp-eixo span:last-child { float: right; }
+
+.pp-gantt {
+  position: relative;
+  min-width: 220px;
+  padding: 0 !important;
+  /* A célula é posicionada e perde a borda inferior na colapsada: redesenha o filete. */
+  background: linear-gradient(var(--n-100), var(--n-100)) bottom / 100% 1px no-repeat;
+}
+.pp-area { position: absolute; top: 0; bottom: 0; left: var(--sp-2); right: var(--sp-2); }
+.pp-hoje { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--primary); opacity: 0.8; }
+.pp-contract { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px dashed var(--n-900); }
+.pp-barra {
+  position: absolute;
+  top: 50%;
+  z-index: 1;
+  display: flex;
+  height: 12px;
+  margin-top: -6px;
+  min-width: 3px;
+}
+.pp-dentro { height: 100%; background: var(--n-500); }
+.pp-barra.atual .pp-dentro { background: var(--primary); }
+.pp-excesso { height: 100%; background: var(--red); }
+.pp-proj {
+  position: absolute;
+  top: 50%;
+  z-index: 1;
+  height: 12px;
+  margin-top: -6px;
+  min-width: 3px;
+  border: 1px dashed var(--n-400);
+  background: var(--n-50);
+  box-sizing: border-box;
+}
+.pp-ponto {
+  position: absolute;
+  top: 50%;
+  z-index: 1;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: var(--n-400);
+}
+
+.pp-total th,
+.pp-total td { border-top: 1px solid var(--n-400); border-bottom: 0; font-weight: 600; }
+.pp-total th.pp-etapa { vertical-align: middle; font-weight: 600; }
+
+.pp-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-4);
+  margin-top: var(--sp-3);
+  font-size: var(--fs-rotulo);
+  line-height: 16px;
+  color: var(--n-500);
+}
+.pp-chave { display: inline-flex; align-items: center; gap: var(--sp-1); }
+.pp-amostra { display: inline-block; width: 16px; height: 8px; box-sizing: border-box; }
+.pp-amostra.dentro { background: var(--n-500); }
+.pp-amostra.excesso { background: var(--red); }
+.pp-amostra.atual { background: var(--primary); }
+.pp-amostra.proj { border: 1px dashed var(--n-400); background: var(--n-50); }
+.pp-amostra.hoje { width: 2px; height: 12px; background: var(--primary); }
+.pp-amostra.contract { width: 0; height: 12px; border-left: 1px dashed var(--n-900); }
 
 .negativas { display: flex; flex-direction: column; gap: var(--sp-3); }
 .negativa-linha { display: flex; justify-content: space-between; gap: var(--sp-3); }
@@ -693,6 +756,73 @@ th[aria-sort] .th-ordenar { color: var(--n-900); }
 .grupo-linha { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--sp-3); }
 
 /* ==========================================================================
+   Comercial: pedido por linha, itens ao expandir
+   ========================================================================== */
+.tabela-comercial .nowrap,
+.tabela-itens-comercial .nowrap { white-space: nowrap; }
+.col-expandir { width: 36px; padding-right: 0 !important; }
+
+/* Indicadores de prazo no topo da tela Comercial */
+.kpis-comercial { margin-bottom: var(--sp-4); padding-bottom: var(--sp-4); border-bottom: 1px solid var(--n-200); }
+.kpis { display: flex; flex-wrap: wrap; gap: var(--sp-4) var(--sp-8); margin: 0; }
+.kpi { display: flex; flex-direction: column; min-width: 160px; max-width: 280px; }
+.kpi dt { font-size: var(--fs-rotulo); line-height: 16px; color: var(--n-500); }
+.kpi dd { margin: 0; font-size: 24px; line-height: 32px; font-weight: 600; }
+.kpi small { font-size: var(--fs-rotulo); line-height: 16px; color: var(--n-500); }
+.kpis-nota { margin-top: var(--sp-3); font-size: var(--fs-rotulo); line-height: 16px; color: var(--amber); }
+
+/* Pedido aberto. Os seletores usam ">" para valer só para a tabela externa:
+   a tabela de itens fica dentro de uma célula e não pode herdar estes estilos. */
+.tabela-comercial > tbody > tr.pedido-aberto > td,
+.tabela-comercial > tbody > tr.pedido-aberto:hover > td {
+  background: var(--primary-50);
+  border-bottom-color: transparent;
+}
+.tabela-comercial > tbody > tr.pedido-aberto > td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
+.tabela-comercial > tbody > tr.pedido-aberto > td.col-acoes { box-shadow: none; }
+.tabela-comercial > tbody > tr.pedido-aberto .btn-icone { color: var(--primary); }
+.tabela-comercial > tbody > tr.pedido-aberto td.col-pedido-num { font-weight: 600; }
+
+.tabela-comercial > tbody > tr.linha-itens > td,
+.tabela-comercial > tbody > tr.linha-itens:hover > td {
+  height: auto;
+  padding: 0;
+  background: var(--primary-50);
+  border-bottom: 1px solid var(--n-200);
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
+.comercial-detalhe { padding: var(--sp-1) var(--sp-4) var(--sp-4) calc(36px + var(--sp-2)); }
+.comercial-detalhe-topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-1) var(--sp-4);
+  padding: var(--sp-1) 0 var(--sp-3);
+}
+.comercial-detalhe-titulo { font-size: var(--fs-corpo); line-height: 20px; font-weight: 600; color: var(--n-900); }
+.comercial-detalhe-resumo { font-size: var(--fs-rotulo); color: var(--n-500); }
+.comercial-meta { display: flex; flex-wrap: wrap; gap: var(--sp-6); margin-bottom: var(--sp-3); }
+.comercial-meta dt { font-size: var(--fs-rotulo); line-height: 16px; color: var(--n-500); }
+.comercial-meta dd { margin: 0; }
+
+/* Painel branco com borda neutra: a tabela de itens destaca-se do fundo azul. */
+.comercial-detalhe .tabela-wrap {
+  border: 1px solid var(--n-200);
+  border-radius: var(--raio);
+  background: var(--n-0);
+}
+.comercial-detalhe .tabela-itens-comercial th { background: var(--n-50); }
+.comercial-detalhe .tabela-itens-comercial tbody tr:last-child td { border-bottom: 0; }
+.comercial-detalhe .tabela-itens-comercial tbody tr:hover td { background: var(--n-50); }
+.tabela-itens-comercial td.col-descricao {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
    Visão geral
    ========================================================================== */
 .recorte { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-6); }
@@ -719,6 +849,63 @@ th[aria-sort] .th-ordenar { color: var(--n-900); }
 .barra-trilho { flex: 0 0 120px; height: 8px; background: var(--n-100); border-radius: 1px; }
 .barra { display: block; height: 100%; background: var(--n-400); border-radius: 1px; }
 .barra-forte { background: var(--n-900); }
+
+/* Quadro do processo interno: meta x realizado, agrupado por trecho do fluxo. */
+.secao-titulo-acoes { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-3); }
+
+.tabela-processo .linha-grupo th,
+.tabela-processo .linha-grupo td {
+  height: 40px;
+  padding-top: var(--sp-2);
+  border-top: 1px solid var(--n-200);
+  color: var(--n-500);
+  font-weight: 500;
+}
+.tabela-processo .linha-grupo th { font-size: var(--fs-rotulo); }
+.tabela-processo tbody:first-of-type .linha-grupo th,
+.tabela-processo tbody:first-of-type .linha-grupo td { border-top: 0; }
+.tabela-processo .linha-etapa td:first-child { padding-left: var(--sp-3); white-space: nowrap; }
+.tabela-processo .linha-total th,
+.tabela-processo .linha-total td {
+  border-top: 1px solid var(--n-400);
+  border-bottom: 0;
+  color: var(--n-900);
+}
+.tabela-processo .linha-total th {
+  padding-left: 0;
+  font-size: var(--fs-corpo);
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--n-900);
+}
+.tabela-processo .linha-total td.txt-sec { color: var(--n-500); }
+
+.selo {
+  display: inline-block;
+  margin-left: var(--sp-2);
+  padding: 0 var(--sp-1);
+  border: 1px solid var(--n-400);
+  border-radius: var(--raio);
+  font-size: var(--fs-rotulo);
+  line-height: 16px;
+  font-weight: 500;
+  color: var(--n-900);
+}
+
+.dist { display: block; min-width: 160px; }
+.dist-trilho { position: relative; display: block; height: 16px; }
+.dist-trilho::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: var(--n-200);
+}
+.dist-faixa { position: absolute; top: 4px; height: 8px; background: var(--n-400); border-radius: 1px; }
+.dist-faixa.forte { background: var(--n-900); }
+.dist-meta { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--n-900); }
 
 .serie-toggles { display: flex; gap: var(--sp-4); }
 

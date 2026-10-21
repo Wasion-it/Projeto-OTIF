@@ -1,10 +1,11 @@
 const NAV = [
   { id: "pedidos", label: "Pedidos" },
+  { id: "comercial", label: "Comercial" },
   { id: "visao-geral", label: "Visão geral" },
   { id: "ajustes", label: "Ajustes" },
 ];
 
-// Navegação enxuta: três destinos, o ativo marcado pelo fundo de seleção.
+// Navegação enxuta: quatro destinos, o ativo marcado pelo fundo de seleção.
 export default function Sidebar({ route, navigate }) {
   return (
     <aside className="sidebar">

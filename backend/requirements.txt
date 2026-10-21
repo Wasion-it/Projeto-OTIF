@@ -15,6 +15,9 @@ typing_extensions>=4.12
 # Usa o ODBC Driver do Windows (aqui: driver legado "SQL Server").
 pyodbc==5.2.0
 
+# Conexao READ-ONLY com o jigadb (MySQL). Necessario quando LEM_SOURCE=jigadb.
+PyMySQL==1.1.1
+
 # Migrations do banco proprio (schema versionado). Use no lugar de create_all
 # em producao: `alembic upgrade head`.
 alembic==1.14.0

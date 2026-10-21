@@ -10,6 +10,7 @@ from ..avaliacao import carregar_e_avaliar
 from ..database import get_db
 from ..ordenacao import filtrar_resultados
 from ..otif import agregar, agregar_por_cliente, agregar_processo
+from ..parametros import carregar_parametros
 from ..schemas import ClienteOtif, MetricasOut, ProcessoMetricasOut, TendenciaMes
 
 router = APIRouter(prefix="/metrics", tags=["metrics"])
@@ -72,7 +73,8 @@ def metricas_processo(
             _avaliar(db, data_ini, data_fim, cliente, force_refresh),
             status=status,
             situacao_prazo=situacao_prazo,
-        )
+        ),
+        metas_dias=carregar_parametros(db).metas_dias,
     )
 
 

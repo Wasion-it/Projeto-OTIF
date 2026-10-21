@@ -7,6 +7,8 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .models import MotivoFalha
+from .otif import METAS_DIAS_PADRAO
+from .parametros import META_DIAS_MAX
 
 
 class ConfirmacaoResumo(BaseModel):
@@ -56,6 +58,8 @@ class EtapaTimeline(BaseModel):
     dias: int | None
     obs: str | None = None
     data_agendada: date | None = None
+    # So LEM e Producao automaticos preenchem: momento em que a etapa comecou.
+    data_inicio_hora: datetime | None = None
 
 
 class ProcessoResumo(BaseModel):
@@ -77,10 +81,18 @@ class ProcessoResumo(BaseModel):
     producao_plan_inicio: date | None = None
     producao_plan_fim: date | None = None
     producao_fim: date | None = None
+    # Producao automatica (jigadb): inicio/fim reais da lacracao; producao_fim = fim.
+    producao_automatica: bool = False
+    producao_inicio_em: datetime | None = None
+    producao_fim_em: datetime | None = None
     comercial_data: date | None = None
     inspecao_agendada_data: date | None = None
     inicio_lem_data: date | None = None
     lem_data: date | None = None
+    # LEM automatico (jigadb): inicio/fim reais da inspecao; lem_data = fim.
+    lem_automatico: bool = False
+    lem_inicio_em: datetime | None = None
+    lem_fim_em: datetime | None = None
     faturamento_em: datetime | None = None
     embarque_em: datetime | None = None
     expedicao_data: date | None = None
@@ -188,11 +200,30 @@ class ClienteOtif(BaseModel):
 class ParametrosOut(BaseModel):
     meta_otif: float
     dias_alerta_prazo: int
+    # Meta global de dias por etapa (chave = etapa do processo).
+    metas_dias: dict[str, int] = Field(default_factory=dict)
 
 
 class ParametrosUpdate(BaseModel):
     meta_otif: float = Field(ge=0, le=100)
     dias_alerta_prazo: int = Field(ge=0, le=365)
+    # Opcional: ausente preserva as metas ja salvas.
+    metas_dias: dict[str, int] | None = None
+
+    @field_validator("metas_dias")
+    @classmethod
+    def validar_metas_dias(cls, valor: dict[str, int] | None) -> dict[str, int] | None:
+        if valor is None:
+            return None
+        desconhecidas = sorted(set(valor) - set(METAS_DIAS_PADRAO))
+        if desconhecidas:
+            raise ValueError(f"Etapa sem meta de dias: {', '.join(desconhecidas)}.")
+        for etapa, dias in valor.items():
+            if not 0 <= dias <= META_DIAS_MAX:
+                raise ValueError(
+                    f"A meta de {etapa} deve ficar entre 0 e {META_DIAS_MAX} dias."
+                )
+        return valor
 
 
 class ConfirmacaoCreate(BaseModel):
@@ -281,10 +312,103 @@ class ProcessoEtapaMetrica(BaseModel):
     em_andamento: int
     concluidas: int
     dias_medio: float | None
+    # Meta global e distribuicao do realizado (so de quem ja passou pela etapa).
+    meta_dias: int | None = None
+    dias_mediana: float | None = None
+    dias_p25: float | None = None
+    dias_p90: float | None = None
+    # Pedidos que estao AGORA na etapa: quantos passaram da meta e o mais antigo.
+    acima_meta: int = 0
+    parado_max_dias: int | None = None
 
 
 class ProcessoMetricasOut(BaseModel):
     total_em_processo: int
     total_concluido: int
     gargalo: str | None
+    # Etapa com a maior media acima da meta (None se nenhuma estourou).
+    maior_desvio: str | None = None
+    lead_time_medio: float | None = None
+    lead_time_meta: int | None = None
+    lead_time_n: int = 0
     etapas: list[ProcessoEtapaMetrica]
+
+
+# ---------------------------------------------------------------------------
+# Tela Comercial
+# ---------------------------------------------------------------------------
+class ComercialItemOut(BaseModel):
+    """Item do pedido, com dados do JUND/jigadb (somente leitura)."""
+
+    item_numero: int
+    item_cliente: int | None
+    cod_cliente: str | None
+    sku: str
+    descricao: str
+    qtd_pedida: float
+    qtd_faturada: float
+    valor_unitario: float | None
+    valor_total: float | None
+    serial: str | None
+    nf_numero: str | None
+    nf_serie: str | None
+    nf_emissao: datetime | None
+    nf_embarque: date | None
+    entrega_cliente: date | None
+    # entregue | faturado | em_programacao
+    status: str
+
+
+class ComercialPedidoOut(BaseModel):
+    pedido_id: int
+    erp_id: int | None
+    numero: str
+    numero_interno: str | None
+    cliente: str
+    contrato: str | None
+    data_pedido: date | None
+    contract_date: date | None
+    faturamento_em: datetime | None = None
+    # Data do pedido no JUND ate o Contract Date.
+    prazo_contratado_dias: int | None = None
+    # Dias que restam para entregar: da emissao da NF (apos_faturamento) ou de
+    # hoje, se ainda nao faturado (ate_hoje), ate o Contract Date.
+    folga_dias: int | None = None
+    folga_tipo: str | None = None
+    # entregue | faturado | parcial | em_programacao
+    status: str
+    etapa_atual: str | None
+    etapa_atual_nome: str | None
+    qtd_itens: int
+    qtd_pedida_total: float
+    valor_total: float | None
+    itens: list[ComercialItemOut] = Field(default_factory=list)
+
+
+class ComercialSerie(BaseModel):
+    n: int
+    media: float | None
+    mediana: float | None
+
+
+class ComercialKpis(BaseModel):
+    """Prazos sobre TODOS os pedidos filtrados (nao so a pagina atual)."""
+
+    total_pedidos: int
+    com_contract_date: int
+    sem_contract_date: int
+    contract_date_inconsistente: int
+    prazo_contratado: ComercialSerie
+    folga_apos_faturamento: ComercialSerie
+    faturados_fora_do_prazo: int
+    folga_curta: int
+    dias_alerta: int
+
+
+class ComercialPage(BaseModel):
+    kpis: ComercialKpis
+    items: list[ComercialPedidoOut]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int

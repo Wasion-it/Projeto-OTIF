@@ -17,17 +17,22 @@ def obter_parametros(db: Session = Depends(get_db)):
     return ParametrosOut(
         meta_otif=parametros.meta_otif,
         dias_alerta_prazo=parametros.dias_alerta_prazo,
+        metas_dias=parametros.metas_dias,
     )
 
 
 @router.put("", response_model=ParametrosOut)
 def atualizar_parametros(payload: ParametrosUpdate, db: Session = Depends(get_db)):
-    row = salvar_parametros(
+    salvar_parametros(
         db,
         meta_otif=payload.meta_otif,
         dias_alerta_prazo=payload.dias_alerta_prazo,
+        metas_dias=payload.metas_dias,
     )
+    # Relê pelo carregador para devolver as metas já mescladas com os padrões.
+    parametros = carregar_parametros(db)
     return ParametrosOut(
-        meta_otif=float(row.meta_otif),
-        dias_alerta_prazo=row.dias_alerta_prazo,
+        meta_otif=parametros.meta_otif,
+        dias_alerta_prazo=parametros.dias_alerta_prazo,
+        metas_dias=parametros.metas_dias,
     )

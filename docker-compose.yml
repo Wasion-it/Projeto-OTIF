@@ -55,13 +55,28 @@ services:
       RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
       ERP_SOURCE: ${ERP_SOURCE:-mock}
       ERP_READ_MODE: ${ERP_READ_MODE:-direct}
+      # Jundsoft (READ-ONLY). Valores reais vem do .env (nunca versionado).
       JUNDSOFT_HOST: ${JUNDSOFT_HOST:-}
-      JUNDSOFT_DB: ${JUNDSOFT_DB:-jundsoft}
-      JUNDSOFT_USER: ${JUNDSOFT_USER:-}
+      JUNDSOFT_PORT: ${JUNDSOFT_PORT:-1433}
+      JUNDSOFT_DATABASE: ${JUNDSOFT_DATABASE:-JUNDSOFT}
+      JUNDSOFT_USERNAME: ${JUNDSOFT_USERNAME:-}
       JUNDSOFT_PASSWORD: ${JUNDSOFT_PASSWORD:-}
       JUNDSOFT_ODBC_DRIVER: ${JUNDSOFT_ODBC_DRIVER:-ODBC Driver 18 for SQL Server}
-      # Ex.: Encrypt=yes;TrustServerCertificate=yes (certificado autoassinado).
-      JUNDSOFT_ODBC_EXTRA: ${JUNDSOFT_ODBC_EXTRA:-}
+      # Defaults seguros; certificado autoassinado interno: TRUST_SERVER_CERTIFICATE=true no .env.
+      JUNDSOFT_ENCRYPT: ${JUNDSOFT_ENCRYPT:-true}
+      JUNDSOFT_TRUST_SERVER_CERTIFICATE: ${JUNDSOFT_TRUST_SERVER_CERTIFICATE:-false}
+      # Inspecao LEM automatica (jigadb, READ-ONLY). Valores reais vem do .env.
+      LEM_SOURCE: ${LEM_SOURCE:-manual}
+      JIGADB_HOST: ${JIGADB_HOST:-}
+      JIGADB_PORT: ${JIGADB_PORT:-3306}
+      JIGADB_DATABASE: ${JIGADB_DATABASE:-jigadb}
+      JIGADB_USERNAME: ${JIGADB_USERNAME:-}
+      JIGADB_PASSWORD: ${JIGADB_PASSWORD:-}
+      JIGADB_CONNECT_TIMEOUT: ${JIGADB_CONNECT_TIMEOUT:-10}
+      JIGADB_PREFIXO_OS_INSP: ${JIGADB_PREFIXO_OS_INSP:-INSP}
+      JIGADB_CACHE_TTL_SECONDS: ${JIGADB_CACHE_TTL_SECONDS:-60}
+      # Producao automatica (jigadb). Exige LEM_SOURCE=jigadb.
+      PRODUCAO_SOURCE: ${PRODUCAO_SOURCE:-manual}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173,http://127.0.0.1:5173}
     ports:
       # A API ainda nao tem autenticacao: por padrao so escuta no loopback do

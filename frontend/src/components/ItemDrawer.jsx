@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import Icone from "./Icone.jsx";
+import ProcessoPedido from "./ProcessoPedido.jsx";
 import { motivoLabel } from "../api.js";
 import {
   acaoDoPedido,
@@ -24,69 +25,6 @@ const FOCUSABLE = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(",");
 
-function textoEtapaTimeline(etapa, processo, atual) {
-  if (etapa.chave === "estoque" && etapa.data_hora) {
-    return `Embarcou em ${fmtDataHora(etapa.data_hora)}`;
-  }
-  if (etapa.chave === "expedicao" && etapa.data_hora) {
-    return `Automática, com o embarque do ERP`;
-  }
-  if (etapa.data_hora) return fmtDataHora(etapa.data_hora);
-  if (etapa.data) return fmtDataIso(etapa.data);
-  if (!atual) return null;
-  if (etapa.chave === "faturamento") return "Aguardando o ERP";
-  if (etapa.chave === "estoque") return "Faturado, aguardando embarque no ERP";
-  if (etapa.chave === "lem" && processo.lem_aguardando_inicio) {
-    return "Aguardando a inspeção · a contagem começa na data agendada";
-  }
-  return processo.dias_na_etapa_atual != null
-    ? `Em andamento há ${processo.dias_na_etapa_atual}d`
-    : "Em andamento";
-}
-
-function LinhaDoTempo({ processo }) {
-  if (!processo) return <p className="txt-sec">Sem dados de processo.</p>;
-  const { etapas = [], etapa_atual, gargalo } = processo;
-  return (
-    <ol className="timeline">
-      {etapas.map((etapa) => {
-        const atual = etapa.chave === etapa_atual;
-        const classe = etapa.concluida ? "feita" : atual ? "atual" : "";
-        const ehGargalo = etapa.chave === gargalo && etapa.dias != null && etapa.dias > 0;
-        return (
-          <li key={etapa.chave} className={`tl-item ${classe}`}>
-            <span className="tl-marca" aria-hidden="true">
-              {etapa.concluida && <Icone nome="check" tamanho={12} />}
-            </span>
-            <span className="sr-only">
-              {etapa.concluida ? "Concluída: " : atual ? "Etapa atual: " : "Pendente: "}
-            </span>
-            <div className="tl-corpo">
-              <div className="tl-linha">
-                <span className={`tl-nome ${atual ? "peso-500" : ""}`}>
-                  {nomeEtapa(etapa.chave, etapa.nome)}
-                </span>
-                {etapa.dias != null && (
-                  <span className="tl-dias">
-                    {etapa.dias}d{ehGargalo && <span className="peso-500"> · gargalo</span>}
-                  </span>
-                )}
-              </div>
-              {textoEtapaTimeline(etapa, processo, atual) && (
-                <div className="tl-info">{textoEtapaTimeline(etapa, processo, atual)}</div>
-              )}
-              {etapa.data_agendada && (
-                <div className="tl-info">Inspeção agendada para {fmtDataIso(etapa.data_agendada)}</div>
-              )}
-              {etapa.obs && <div className="tl-obs">{etapa.obs}</div>}
-            </div>
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
 function SimNao({ valor }) {
   if (valor == null) return <span className="txt-sec">sem resultado</span>;
   return valor ? <span className="tom-ok">Sim</span> : <span className="tom-erro">Não</span>;
@@ -94,6 +32,7 @@ function SimNao({ valor }) {
 
 export default function ItemDrawer({
   item,
+  metasDias,
   suspenso = false,
   onClose,
   onConfirmar,
@@ -300,14 +239,14 @@ export default function ItemDrawer({
 
           <section className="drawer-secao" aria-labelledby="drawer-tempo">
             <div className="secao-titulo">
-              <h3 id="drawer-tempo">Linha do tempo</h3>
+              <h3 id="drawer-tempo">Processo: meta × realizado</h3>
               {onEtapa && (
                 <button type="button" className="btn btn-texto btn-p" onClick={() => onEtapa(pedido)}>
                   Editar etapas
                 </button>
               )}
             </div>
-            <LinhaDoTempo processo={processo} />
+            <ProcessoPedido pedido={pedido} metasDias={metasDias} />
           </section>
 
           {fechado && (

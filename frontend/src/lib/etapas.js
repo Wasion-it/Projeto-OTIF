@@ -16,6 +16,19 @@ export const ETAPAS_FLUXO = [
   { chave: "entrega", nome: "Entrega", origem: "manual" },
 ];
 
+// Etapas com meta de dias, na ordem do fluxo. "Pedido" não tem duração e
+// "Expedição" é a mesma data do Embarque que fecha o Estoque.
+export const ETAPAS_COM_META = ["pcp", "producao", "comercial", "lem", "faturamento", "estoque", "entrega"];
+
+// Agrupamento do quadro de processo. Os grupos seguem a ordem do fluxo (sem
+// intercalar etapas), para que cada subtotal seja um trecho contínuo do pedido.
+export const GRUPOS_PROCESSO = [
+  { nome: "Planejamento e produção", etapas: ["pcp", "producao"] },
+  { nome: "Agendamento e inspeção", etapas: ["comercial", "lem"] },
+  { nome: "Faturamento e expedição", etapas: ["faturamento", "estoque"] },
+  { nome: "Entrega ao cliente", etapas: ["entrega"] },
+];
+
 // Etapas que aparecem na barra de filtro. Expedição nunca é a etapa atual
 // (tem a mesma data do embarque que encerra o Estoque), então não vira filtro.
 export const ETAPAS_FILTRO = ETAPAS_FLUXO.filter((e) => e.chave !== "expedicao");
@@ -26,6 +39,14 @@ export const ETAPAS_LOTE = {
   producao: { verbo: "Confirmar produção", campoData: "Fim da produção", limite: "max" },
   comercial: { verbo: "Agendar inspeção", campoData: "Data da inspeção", limite: "min" },
 };
+
+// Etapa filtrada que aceita ação em lote, ou null. A Produção automática vem
+// do jigadb e não pode ser confirmada manualmente.
+export function etapaEmLote(etapa, itens) {
+  if (!ETAPAS_LOTE[etapa]) return null;
+  if (etapa === "producao" && itens.some((it) => it.processo?.producao_automatica)) return null;
+  return etapa;
+}
 
 // Nome curto e único em toda a interface (o backend usa nomes longos, como
 // "PCP / Planejamento", que não cabem na tabela).
@@ -97,6 +118,9 @@ export function detalheEtapa(processo) {
   if (etapa === "lem" && processo.lem_aguardando_inicio) {
     return { texto: `Inspeção agendada para ${fmtDataCurta(processo.inicio_lem_data)}`, tom: "neutro" };
   }
+  if (etapa === "lem" && processo.lem_automatico) {
+    return { texto: dias ? `Aguarda inspeção há ${dias}d` : "Aguarda inspeção", tom: "neutro" };
+  }
   if (etapa === "faturamento") {
     return { texto: dias ? `Aguarda o ERP há ${dias}d` : "Aguarda o ERP", tom: "neutro" };
   }
@@ -108,6 +132,13 @@ export function detalheEtapa(processo) {
       texto: `Fim planejado ${fmtDataCurta(processo.producao_plan_fim)} ultrapassado`,
       tom: "atencao",
     };
+  }
+  // Produção automática: o início vem da primeira lacração no jigadb.
+  if (etapa === "producao" && processo.producao_automatica) {
+    if (processo.producao_inicio_em) {
+      return { texto: dias ? `Em produção há ${dias}d` : "Em produção", tom: "neutro" };
+    }
+    return { texto: dias ? `Aguarda a produção há ${dias}d` : "Aguarda a produção", tom: "neutro" };
   }
   if (dias != null) return { texto: `Há ${dias}d na etapa`, tom: "neutro" };
   return null;
@@ -122,8 +153,16 @@ export function acaoDoPedido(pedido) {
   const etapa = processo?.etapa_atual;
   if (!processo || etapa === "concluido") return { tipo: null, espera: null };
   if (etapa === "pcp") return { tipo: "etapa", etapa, label: "Confirmar PCP" };
+  // Produção automática: início e fim vêm da lacração dos medidores no jigadb.
+  if (etapa === "producao" && processo.producao_automatica) {
+    return { tipo: null, espera: processo.producao_inicio_em ? "Em produção" : "Aguarda a produção" };
+  }
   if (etapa === "producao") return { tipo: "etapa", etapa, label: "Confirmar produção" };
   if (etapa === "comercial") return { tipo: "etapa", etapa, label: "Agendar inspeção" };
+  // LEM automático: início e fim vêm das OS de inspeção do jigadb.
+  if (etapa === "lem" && processo.lem_automatico) {
+    return { tipo: null, espera: "Aguarda a inspeção" };
+  }
   // A inspeção pode acontecer antes ou depois da data agendada.
   if (etapa === "lem") return { tipo: "etapa", etapa, label: "Confirmar inspeção" };
   if (etapa === "faturamento") return { tipo: null, espera: "Aguarda o ERP" };
@@ -155,5 +194,12 @@ export function podeAgendarAntecipado(pedido) {
 export function registroPendente(pedido) {
   const etapa = pedido.processo?.etapa_atual;
   const faturado = Boolean(pedido.faturamento_em || pedido.processo?.faturamento_em);
-  return faturado && ["pcp", "producao", "comercial", "lem"].includes(etapa);
+  // Produção e LEM automáticos não têm o que registrar no painel.
+  const processo = pedido.processo;
+  const manuais = ["pcp", "producao", "comercial", "lem"].filter(
+    (chave) =>
+      !(chave === "producao" && processo?.producao_automatica) &&
+      !(chave === "lem" && processo?.lem_automatico)
+  );
+  return faturado && manuais.includes(etapa);
 }

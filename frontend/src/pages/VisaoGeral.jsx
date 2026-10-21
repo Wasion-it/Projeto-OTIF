@@ -1,6 +1,6 @@
 import PeriodoRapido from "../components/PeriodoRapido.jsx";
 import OtifTrend from "../components/OtifTrend.jsx";
-import GargaloEtapas from "../components/GargaloEtapas.jsx";
+import ProcessoInterno from "../components/ProcessoInterno.jsx";
 import MotivosFalha from "../components/MotivosFalha.jsx";
 import OtifClientes from "../components/OtifClientes.jsx";
 import { META_OTIF_PADRAO, fmtInteiro, fmtPct } from "../lib/format.js";
@@ -27,6 +27,7 @@ export default function VisaoGeral({
   onPeriodo,
   onRemoverCliente,
   onAbrirPedidos,
+  onAbrirAjustes,
 }) {
   return (
     <>
@@ -103,11 +104,13 @@ export default function VisaoGeral({
 
           <OtifTrend dados={tendencia} meta={meta} />
 
+          <ProcessoInterno
+            processo={processo}
+            onAbrirEtapa={(etapa) => onAbrirPedidos({ etapa })}
+            onAbrirAjustes={onAbrirAjustes}
+          />
+
           <div className="grade-2">
-            <GargaloEtapas
-              processo={processo}
-              onAbrirEtapa={(etapa) => onAbrirPedidos({ etapa })}
-            />
             <MotivosFalha
               motivos={metricas.motivos_falha}
               onVerFalhas={() => onAbrirPedidos({ status: "falha" })}

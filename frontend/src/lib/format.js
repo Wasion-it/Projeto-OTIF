@@ -10,6 +10,23 @@ export function fmtInteiro(n) {
   return Number(n || 0).toLocaleString("pt-BR");
 }
 
+// "4,2d". Dias do processo aceitam uma casa decimal (médias).
+export function fmtDias(n) {
+  return `${fmtPct(n)}d`;
+}
+
+// Diferença com sinal explícito: "+4,2d", "−0,2d" (menos tipográfico) ou "0d".
+export function fmtDiferenca(n) {
+  if (!n) return "0d";
+  return `${n > 0 ? "+" : "−"}${fmtPct(Math.abs(n))}d`;
+}
+
+// "R$ 117.340,80". Valor ausente (item sem preço no JUND) vira traço.
+export function fmtMoeda(n) {
+  if (n == null) return "—";
+  return Number(n).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
 export function formatarNotaFiscal(numero, serie) {
   if (!numero) return "—";
   return serie ? `NF ${numero} · série ${serie}` : `NF ${numero}`;

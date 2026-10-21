@@ -39,9 +39,6 @@ const GRUPOS = [
   },
 ];
 
-const CAMPOS = GRUPOS.flatMap((g) => g.campos);
-const CAMPOS_OBS = GRUPOS.map((g) => g.obs);
-
 const ETAPAS_SEQUENCIAIS = [
   { key: "pcp_data", label: "PCP" },
   { key: "producao_fim", label: "Produção" },
@@ -50,6 +47,25 @@ const ETAPAS_SEQUENCIAIS = [
 
 export default function EtapaModal({ item, onClose, onSaved }) {
   const proc = item.processo || {};
+  // LEM automático: início e fim vêm do jigadb, então o editor não mostra nem
+  // envia o grupo "Inspeção LEM".
+  const lemAutomatico = Boolean(proc.lem_automatico);
+  // Produção automática: o fim real vem da lacração no jigadb. Os campos de
+  // planejamento (início/fim planejados) continuam editáveis.
+  const producaoAutomatica = Boolean(proc.producao_automatica);
+  const grupos = (lemAutomatico ? GRUPOS.filter((g) => g.titulo !== "Inspeção LEM") : GRUPOS).map(
+    (g) =>
+      producaoAutomatica && g.titulo === "Produção"
+        ? { ...g, campos: g.campos.filter((c) => c.key !== "producao_fim") }
+        : g
+  );
+  const sequenciais = ETAPAS_SEQUENCIAIS.filter(
+    (e) =>
+      !(e.key === "producao_fim" && producaoAutomatica) &&
+      !(e.key === "lem_data" && lemAutomatico)
+  );
+  const CAMPOS = grupos.flatMap((g) => g.campos);
+  const CAMPOS_OBS = grupos.map((g) => g.obs);
   const [datas, setDatas] = useState(() =>
     CAMPOS.reduce((acc, campo) => ({ ...acc, [campo.key]: proc[campo.key] || "" }), {})
   );
@@ -79,7 +95,7 @@ export default function EtapaModal({ item, onClose, onSaved }) {
     setErro(null);
 
     let etapaPendente = null;
-    for (const etapa of ETAPAS_SEQUENCIAIS) {
+    for (const etapa of sequenciais) {
       if (!datas[etapa.key] && !etapaPendente) etapaPendente = etapa;
       if (datas[etapa.key] && etapaPendente) {
         setErro(`Preencha ${etapaPendente.label} antes de registrar ${etapa.label}.`);
@@ -135,7 +151,7 @@ export default function EtapaModal({ item, onClose, onSaved }) {
       largo
     >
       <form onSubmit={salvar} className="form">
-        {GRUPOS.map((grupo) => (
+        {grupos.map((grupo) => (
           <fieldset key={grupo.titulo} className="grupo-campos">
             <legend>{grupo.titulo}</legend>
             <div className="grupo-linha">
@@ -170,8 +186,34 @@ export default function EtapaModal({ item, onClose, onSaved }) {
         ))}
 
         <fieldset className="grupo-campos">
-          <legend>Do ERP (somente leitura)</legend>
+          <legend>Automático (somente leitura)</legend>
           <dl className="kv">
+            {producaoAutomatica && (
+              <>
+                <dt>Produção · início</dt>
+                <dd>
+                  {proc.producao_inicio_em
+                    ? fmtDataHora(proc.producao_inicio_em)
+                    : "Aguardando a lacração"}
+                </dd>
+                <dt>Produção · fim</dt>
+                <dd>
+                  {proc.producao_fim_em
+                    ? fmtDataHora(proc.producao_fim_em)
+                    : proc.producao_inicio_em
+                      ? "Em andamento"
+                      : "Aguardando a lacração"}
+                </dd>
+              </>
+            )}
+            {lemAutomatico && (
+              <>
+                <dt>Inspeção LEM · início</dt>
+                <dd>{proc.lem_inicio_em ? fmtDataHora(proc.lem_inicio_em) : "Aguardando a inspeção"}</dd>
+                <dt>Inspeção LEM · fim</dt>
+                <dd>{proc.lem_fim_em ? fmtDataHora(proc.lem_fim_em) : "Aguardando a inspeção"}</dd>
+              </>
+            )}
             <dt>Faturamento</dt>
             <dd>{proc.faturamento_em ? fmtDataHora(proc.faturamento_em) : "Aguardando o ERP"}</dd>
             <dt>Nota fiscal</dt>

@@ -59,6 +59,7 @@ export const api = {
   tendencia: (filtros) => req(`/metrics/tendencia${qs(filtros)}`),
   clientes: (filtros) => req(`/metrics/clientes${qs(filtros)}`),
   pedidos: (filtros) => req(`/pedidos${qs(filtros)}`),
+  comercialPedidos: (filtros) => req(`/comercial/pedidos${qs(filtros)}`),
   config: () => req(`/config`),
   salvarConfig: (payload) =>
     req(`/config`, {

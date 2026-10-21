@@ -197,6 +197,15 @@ def _compor(dado: dict, ancora: Pedido) -> SimpleNamespace:
         embarque_em=dado.get("embarque_em"),
         nota_fiscal_numero=dado.get("nota_fiscal_numero"),
         nota_fiscal_serie=dado.get("nota_fiscal_serie"),
+        contrato=dado.get("contrato"),
+        # LEM automatico (jigadb): nao e persistido, vem sempre da leitura atual.
+        lem_automatico=bool(dado.get("lem_automatico")),
+        lem_inicio_em=dado.get("lem_inicio_em"),
+        lem_fim_em=dado.get("lem_fim_em"),
+        # Producao automatica (jigadb): tambem nao e persistida.
+        producao_automatica=bool(dado.get("producao_automatica")),
+        producao_inicio_em=dado.get("producao_inicio_em"),
+        producao_fim_em=dado.get("producao_fim_em"),
         itens=itens,
         confirmacao=ancora.confirmacao,
         etapa=ancora.etapa,

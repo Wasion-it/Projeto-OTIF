@@ -15,7 +15,7 @@ from .config import get_settings
 from .database import Base, engine
 from .pedidos_direto import ErpIndisponivelError
 from .routers import config as config_router
-from .routers import confirmacoes, etapas, metrics, pedidos
+from .routers import comercial, confirmacoes, etapas, metrics, pedidos
 
 settings = get_settings()
 
@@ -43,6 +43,7 @@ app.include_router(confirmacoes.router)
 app.include_router(etapas.router)
 app.include_router(metrics.router)
 app.include_router(config_router.router)
+app.include_router(comercial.router)
 
 
 @app.exception_handler(ErpIndisponivelError)

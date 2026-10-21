@@ -267,6 +267,9 @@ class Parametros(Base):
     # Faltando este numero de dias (ou menos) para o Contract Date, o pendente
     # entra em "atencao".
     dias_alerta_prazo: Mapped[int] = mapped_column(Integer, default=7)
+    # Meta global de dias por etapa do processo interno, em JSON
+    # ({"producao": 10, ...}). Chaves ausentes usam otif.METAS_DIAS_PADRAO.
+    metas_dias: Mapped[str | None] = mapped_column(Text, nullable=True)
     atualizado_em: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()
     )

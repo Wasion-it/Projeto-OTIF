@@ -12,6 +12,7 @@ import ItemDrawer from "./components/ItemDrawer.jsx";
 import VisaoGeral from "./pages/VisaoGeral.jsx";
 import Pedidos from "./pages/Pedidos.jsx";
 import Ajustes from "./pages/Ajustes.jsx";
+import Comercial from "./pages/Comercial.jsx";
 import { META_OTIF_PADRAO, fmtInteiro } from "./lib/format.js";
 import { nomeEtapa } from "./lib/etapas.js";
 import {
@@ -25,6 +26,7 @@ import {
 
 const TITULO_ROTA = {
   pedidos: "Pedidos",
+  comercial: "Comercial",
   "visao-geral": "Visão geral",
   ajustes: "Ajustes",
 };
@@ -157,7 +159,8 @@ export default function App() {
   // Recarrega a cada 30 s. Suspende com aba oculta, modal aberto ou lote em
   // seleção para evitar tráfego e mudanças sob um formulário em edição.
   useEffect(() => {
-    if (route === "ajustes") return undefined;
+    // Ajustes e Comercial não usam o carregamento central (Comercial se atualiza sozinho).
+    if (route === "ajustes" || route === "comercial") return undefined;
     const intervalo = window.setInterval(() => {
       if (document.visibilityState === "visible" && !pausarAuto) carregar();
     }, INTERVALO_AUTO_MS);
@@ -316,6 +319,7 @@ export default function App() {
       const etapa = filtrosAplicados.etapa ? ` em ${nomeEtapa(filtrosAplicados.etapa)}` : "";
       return `${fmtInteiro(totalItens)} ${totalItens === 1 ? "pedido" : "pedidos"}${etapa}`;
     }
+    if (route === "comercial") return "Pedidos, itens e acompanhamento comercial";
     if (route === "visao-geral") return `Meta de OTIF: ${metaOtif}%`;
     return "Parâmetros do painel";
   }
@@ -335,7 +339,7 @@ export default function App() {
             <h1>{TITULO_ROTA[route]}</h1>
             <p className="topo-sub">{subtituloRota()}</p>
           </div>
-          {route !== "ajustes" && (
+          {route !== "ajustes" && route !== "comercial" && (
             <div className="topo-acoes">
               {horaAtualizacao && (
                 <span className="topo-hora" title="A tela recarrega sozinha a cada 30 segundos">
@@ -417,8 +421,11 @@ export default function App() {
             onPeriodo={(datas) => aplicarFiltrosPedidos({ ...filtrosAplicados, ...datas })}
             onRemoverCliente={() => removerFiltroAtivo("cliente")}
             onAbrirPedidos={abrirPedidos}
+            onAbrirAjustes={() => navigate("ajustes")}
           />
         )}
+
+        {route === "comercial" && <Comercial />}
 
         {route === "ajustes" && <Ajustes onConfigChange={(cfg) => setConfig(cfg)} />}
       </main>
@@ -426,6 +433,7 @@ export default function App() {
       {detalheItem && (
         <ItemDrawer
           item={detalheItem}
+          metasDias={config?.metas_dias}
           suspenso={haModalAberto}
           onClose={() => setDetalheItemId(null)}
           onConfirmar={setItemAtivo}

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import random
+import re
 from datetime import date, datetime, timedelta
 
 from faker import Faker
@@ -144,11 +145,20 @@ def _gerar_pedidos_fake(qtd_pedidos: int, seed: int | None) -> list[dict]:
 #   qtd pedida/faturada-> TB_PV_02.PV02_QTDE / PV02_QTDE_FATURADA
 #   faturamento/NF    -> ultima TB_FT_01 nao cancelada por emissao/FT01_ID
 #   embarque          -> FT01_DATA_EMBARQUE da mesma nota fiscal
+# Campos da tela Comercial (somente leitura, por item):
+#   preco / total     -> TB_PV_02.PV02_VALOR_UNITARIO; total = preco x quantidade
+#   item do cliente   -> TB_PV_02.PV02_PEDIDO_CLIENTE_ITEM_XML
+#   cod. do cliente   -> texto "... CÓD.: x" de TB_PV_02.PV02_APLICACAO
+#   contrato / serial -> texto livre de TB_PV_01.PV01_OBS_NF ("CONTRATO: n",
+#                        "Serial Item n: a à b"); so os trechos extraidos saem
+#                        daqui, o texto bruto (dados bancarios) nunca e exposto
+#   NF do item        -> nota nao cancelada que contem o item (TB_FT_02.PV02_ID)
 _SQL_JUNDSOFT = """
 SELECT
     h.PV01_ID,
     h.PV01_NUMERO_CLIENTE,
     h.PV01_NUMERO_INTERNO,
+    h.PV01_OBS_NF,
     cli.CD01_NOME,
     h.PV01_DATA_PEDIDO,
     h.PV01_DATA_DIGITACAO_H,
@@ -157,19 +167,42 @@ SELECT
         NULLIF(LTRIM(RTRIM(i.PV02_DIAS_ENTREGA)), ''),
         103
     ) AS contract_date,
+    i.PV02_ID,
     i.PV02_ITEM,
     i.PV02_DESCRICAO,
+    i.PV02_APLICACAO,
+    i.PV02_PEDIDO_CLIENTE_ITEM_XML,
+    i.PV02_VALOR_UNITARIO,
     prod.CD04_CODIGO_INTERNO,
     i.PV02_QTDE,
     i.PV02_QTDE_FATURADA,
     ft.faturamento_em,
     ft.embarque_em,
     ft.nota_fiscal_numero,
-    ft.nota_fiscal_serie
+    ft.nota_fiscal_serie,
+    fi.nf_item_numero,
+    fi.nf_item_serie,
+    fi.nf_item_emissao,
+    fi.nf_item_embarque,
+    fi.nf_item_entrega
 FROM TB_PV_01 h
 JOIN TB_PV_02 i ON i.PV01_ID = h.PV01_ID
 LEFT JOIN TB_CD_01 cli ON cli.CD01_ID = h.CD01_ID
 LEFT JOIN TB_CD_04 prod ON prod.CD04_ID = i.CD04_ID
+OUTER APPLY (
+    SELECT TOP (1)
+        f1.FT01_NOTA AS nf_item_numero,
+        f1.FT01_SERIE AS nf_item_serie,
+        f1.FT01_DATA_EMISSAO_H AS nf_item_emissao,
+        f1.FT01_DATA_EMBARQUE AS nf_item_embarque,
+        f1.FT01_DATA_ENTREGA AS nf_item_entrega
+    FROM TB_FT_02 f2
+    JOIN TB_FT_01 f1 ON f1.FT01_ID = f2.FT01_ID
+    WHERE f2.PV02_ID = i.PV02_ID
+      AND f1.FT01_CANCELADA = 0
+      AND f1.FT01_DATA_EMISSAO_H IS NOT NULL
+    ORDER BY f1.FT01_DATA_EMISSAO_H DESC, f1.FT01_ID DESC
+) fi
 OUTER APPLY (
     SELECT TOP (1)
         f.FT01_DATA_EMISSAO_H AS faturamento_em,
@@ -235,6 +268,52 @@ def _texto_erp(valor) -> str | None:
     return texto or None
 
 
+_RE_CONTRATO = re.compile(r"CONTRATO\s*:?\s*([0-9][0-9A-Za-z./\-]*)", re.IGNORECASE)
+_RE_SERIAL = re.compile(r"Serial\s+Item\s+(\d+)\s*:\s*([^;*]+)", re.IGNORECASE)
+# "CÓD." pode chegar com 1 ou 2 caracteres no lugar do "Ó", conforme o driver.
+_RE_COD_CLIENTE = re.compile(
+    r"C.{1,2}D\.?\s*:\s*([0-9A-Za-z][0-9A-Za-z.\-/]*)", re.IGNORECASE
+)
+
+
+def extrair_contrato(obs: str | None) -> str | None:
+    """Numero do contrato escrito em PV01_OBS_NF ("CONTRATO: 4600092216")."""
+    if not obs:
+        return None
+    achado = _RE_CONTRATO.search(obs)
+    return achado.group(1).rstrip(".-/") if achado else None
+
+
+def extrair_seriais(obs: str | None) -> dict[int, str]:
+    """Faixas de numero de serie por item do cliente ("Serial Item 10: a à b")."""
+    if not obs:
+        return {}
+    return {
+        int(item): faixa.strip().rstrip(". ")
+        for item, faixa in _RE_SERIAL.findall(obs)
+        if faixa.strip().rstrip(". ")
+    }
+
+
+def extrair_cod_cliente(aplicacao: str | None) -> str | None:
+    """Codigo do material no cliente, escrito em PV02_APLICACAO ("CÓD.: 50-000-...")."""
+    if not aplicacao:
+        return None
+    achado = _RE_COD_CLIENTE.search(aplicacao)
+    return achado.group(1).rstrip(".-/") if achado else None
+
+
+def _total_item(unitario, quantidade) -> float | None:
+    """Total do item = preco unitario x quantidade (sem IPI, frete ou seguro)."""
+    if unitario is None or quantidade is None:
+        return None
+    return round(float(unitario) * float(quantidade), 2)
+
+
+def _decimal_ou_none(valor) -> float | None:
+    return float(valor) if valor is not None else None
+
+
 def _buscar_pedidos_sqlserver(meses: int) -> list[dict]:
     import pyodbc  # importado aqui para nao ser dependencia no modo mock
 
@@ -244,6 +323,7 @@ def _buscar_pedidos_sqlserver(meses: int) -> list[dict]:
         cur = conn.cursor()
         cur.execute(_SQL_JUNDSOFT.format(meses=int(meses)))
         pedidos: dict[int, dict] = {}
+        seriais_por_pedido: dict[int, dict[int, str]] = {}
         for r in cur.fetchall():
             pv01 = r.PV01_ID
             pedido = pedidos.get(pv01)
@@ -268,9 +348,11 @@ def _buscar_pedidos_sqlserver(meses: int) -> list[dict]:
                     "embarque_em": _datetime_erp(r.embarque_em),
                     "nota_fiscal_numero": _texto_erp(r.nota_fiscal_numero),
                     "nota_fiscal_serie": _texto_erp(r.nota_fiscal_serie),
+                    "contrato": extrair_contrato(r.PV01_OBS_NF),
                     "itens": [],
                 }
                 pedidos[pv01] = pedido
+                seriais_por_pedido[pv01] = extrair_seriais(r.PV01_OBS_NF)
 
             contract_date = _dt(r.contract_date)
             contract_date_atual = pedido["contract_date"]
@@ -287,6 +369,11 @@ def _buscar_pedidos_sqlserver(meses: int) -> list[dict]:
                 elif contract_date_atual is None:
                     pedido["contract_date"] = contract_date
 
+            item_cliente = (
+                int(r.PV02_PEDIDO_CLIENTE_ITEM_XML)
+                if r.PV02_PEDIDO_CLIENTE_ITEM_XML
+                else None
+            )
             pedido["itens"].append(
                 {
                     "item_numero": int(r.PV02_ITEM or 0),
@@ -299,11 +386,63 @@ def _buscar_pedidos_sqlserver(meses: int) -> list[dict]:
                         if pedido["faturamento_em"] is not None
                         else None
                     ),
+                    # Campos da tela Comercial (somente leitura).
+                    "item_cliente": item_cliente,
+                    "cod_cliente": extrair_cod_cliente(r.PV02_APLICACAO),
+                    "valor_unitario": _decimal_ou_none(r.PV02_VALOR_UNITARIO),
+                    "valor_total": _total_item(r.PV02_VALOR_UNITARIO, r.PV02_QTDE),
+                    "serial": (
+                        seriais_por_pedido[pv01].get(item_cliente)
+                        if item_cliente is not None
+                        else None
+                    ),
+                    "nf_numero": _texto_erp(r.nf_item_numero),
+                    "nf_serie": _texto_erp(r.nf_item_serie),
+                    "nf_emissao": _datetime_erp(r.nf_item_emissao),
+                    "nf_embarque": _dt(r.nf_item_embarque),
+                    "nf_entrega": _dt(r.nf_item_entrega),
                 }
             )
         return list(pedidos.values())
     finally:
         conn.close()
+
+
+def _aplicar_lem_automatico(pedidos: list[dict], meses: int) -> None:
+    """Anexa inicio/fim da inspecao LEM (jigadb) a cada pedido do JUND.
+
+    Com LEM automatico todos os pedidos recebem ``lem_automatico=True``; os que
+    ainda nao tem OS INSP ficam com inicio/fim nulos (LEM pendente).
+    """
+    if not get_settings().lem_automatico:
+        return
+    from .jigadb_lem import buscar_inspecoes_por_pedido
+
+    inspecoes = buscar_inspecoes_por_pedido(meses)
+    for pedido in pedidos:
+        inicio, fim = inspecoes.get(pedido["erp_id"], (None, None))
+        pedido["lem_automatico"] = True
+        pedido["lem_inicio_em"] = inicio
+        pedido["lem_fim_em"] = fim
+
+
+def _aplicar_producao_automatica(pedidos: list[dict], meses: int) -> None:
+    """Anexa inicio/fim da Producao (jigadb) a cada pedido do JUND.
+
+    Com Producao automatica todos os pedidos recebem ``producao_automatica=True``;
+    os sem lacracao ficam com inicio/fim nulos e os ainda em andamento so com o
+    inicio (o fim aparece quando todos os lotes terminam).
+    """
+    if not get_settings().producao_automatica:
+        return
+    from .jigadb_producao import buscar_producao_por_pedido
+
+    producao = buscar_producao_por_pedido(meses)
+    for pedido in pedidos:
+        inicio, fim = producao.get(pedido["erp_id"], (None, None))
+        pedido["producao_automatica"] = True
+        pedido["producao_inicio_em"] = inicio
+        pedido["producao_fim_em"] = fim
 
 
 def buscar_pedidos_erp(
@@ -316,5 +455,8 @@ def buscar_pedidos_erp(
     if settings.erp_source == "mock":
         return _gerar_pedidos_fake(qtd_pedidos, seed)
     if settings.erp_source == "sqlserver":
-        return _buscar_pedidos_sqlserver(meses)
+        pedidos = _buscar_pedidos_sqlserver(meses)
+        _aplicar_lem_automatico(pedidos, meses)
+        _aplicar_producao_automatica(pedidos, meses)
+        return pedidos
     raise ValueError(f"erp_source invalido: {settings.erp_source!r}")

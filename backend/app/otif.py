@@ -38,6 +38,19 @@ ETAPAS_PROCESSO: list[tuple[str, str]] = [
 NOMES_ETAPAS = dict(ETAPAS_PROCESSO)
 ETAPA_CONCLUIDO = "concluido"
 
+# Meta global de dias em cada etapa (MVP). Valores iniciais de referencia: devem
+# ser calibrados em Ajustes. "pedido" e "expedicao" nao tem meta (nao ha duracao
+# propria: a Expedicao e a mesma data do Embarque que fecha o Estoque).
+METAS_DIAS_PADRAO: dict[str, int] = {
+    "pcp": 2,
+    "producao": 10,
+    "comercial": 2,
+    "lem": 3,
+    "faturamento": 1,
+    "estoque": 3,
+    "entrega": 5,
+}
+
 SIT_NO_PRAZO = "no_prazo"
 SIT_ATENCAO = "atencao"
 SIT_VENCIDO = "vencido"
@@ -103,6 +116,28 @@ def avaliar_processo(pedido: Pedido, conf) -> dict:
     """
     etapa = pedido.etapa
     hoje = data_operacional()
+    # LEM automatico: inicio/fim vem do jigadb e a data manual e ignorada.
+    # getattr: pedidos ORM (snapshot/testes) nao carregam esses campos.
+    lem_automatico = bool(getattr(pedido, "lem_automatico", False))
+    lem_inicio_em = getattr(pedido, "lem_inicio_em", None) if lem_automatico else None
+    lem_fim_em = getattr(pedido, "lem_fim_em", None) if lem_automatico else None
+    if lem_automatico:
+        lem_data = lem_fim_em.date() if lem_fim_em else None
+    else:
+        lem_data = etapa.lem_data if etapa else None
+    # Producao automatica: inicio/fim da lacracao vem do jigadb e o fim manual
+    # (etapa.producao_fim) e ignorado.
+    producao_automatica = bool(getattr(pedido, "producao_automatica", False))
+    producao_inicio_em = (
+        getattr(pedido, "producao_inicio_em", None) if producao_automatica else None
+    )
+    producao_fim_em = (
+        getattr(pedido, "producao_fim_em", None) if producao_automatica else None
+    )
+    if producao_automatica:
+        producao_data = producao_fim_em.date() if producao_fim_em else None
+    else:
+        producao_data = etapa.producao_fim if etapa else None
     faturamento_em = pedido.faturamento_em
     faturamento_data = faturamento_em.date() if faturamento_em else None
     embarque_em = pedido.embarque_em
@@ -111,9 +146,9 @@ def avaliar_processo(pedido: Pedido, conf) -> dict:
     datas: dict[str, date | None] = {
         "pedido": pedido.data_pedido,
         "pcp": etapa.pcp_data if etapa else None,
-        "producao": etapa.producao_fim if etapa else None,
+        "producao": producao_data,
         "comercial": etapa.comercial_data if etapa else None,
-        "lem": etapa.lem_data if etapa else None,
+        "lem": lem_data,
         "faturamento": faturamento_data,
         # "Estoque" nao e um evento; e o tempo parado entre Faturamento e
         # Embarque. Sua "data" e a do Embarque para fechar a duracao do
@@ -134,12 +169,15 @@ def avaliar_processo(pedido: Pedido, conf) -> dict:
         "entrega": conf.observacao if conf else None,
     }
     inspecao_agendada = etapa.inspecao_agendada_data if etapa else None
-    producao_fim = etapa.producao_fim if etapa else None
     inicio_lem = (
-        max(inspecao_agendada, producao_fim)
-        if inspecao_agendada is not None and producao_fim is not None
+        max(inspecao_agendada, producao_data)
+        if inspecao_agendada is not None and producao_data is not None
         else None
     )
+    # Com a inspecao real conhecida (jigadb), o LEM conta do inicio real ao
+    # fim real. Antes da primeira OS vale o marco previsto acima.
+    if lem_inicio_em is not None:
+        inicio_lem = lem_inicio_em.date()
     negativas = sorted(
         list(pedido.negativas_producao),
         key=lambda negativa: (
@@ -177,7 +215,14 @@ def avaliar_processo(pedido: Pedido, conf) -> dict:
             if primeira_pendente_idx is None:
                 primeira_pendente_idx = idx
 
-        base_duracao = inicio_lem if chave == "lem" else prev_data
+        if chave == "lem":
+            base_duracao = inicio_lem
+        elif chave == "producao" and producao_inicio_em is not None:
+            # Com a lacracao real conhecida, a Producao conta do primeiro ao
+            # ultimo medidor; a espera entre o PCP e o inicio fica de fora.
+            base_duracao = producao_inicio_em.date()
+        else:
+            base_duracao = prev_data
         dias = (
             max(0, (data_etapa - base_duracao).days)
             if concluida and fluxo_contiguo and base_duracao is not None
@@ -195,7 +240,20 @@ def avaliar_processo(pedido: Pedido, conf) -> dict:
                 "data_hora": (
                     faturamento_em
                     if chave == "faturamento"
-                    else embarque_em if chave in ("estoque", "expedicao") else None
+                    else embarque_em
+                    if chave in ("estoque", "expedicao")
+                    else lem_fim_em
+                    if chave == "lem"
+                    else producao_fim_em
+                    if chave == "producao"
+                    else None
+                ),
+                "data_inicio_hora": (
+                    lem_inicio_em
+                    if chave == "lem"
+                    else producao_inicio_em
+                    if chave == "producao"
+                    else None
                 ),
                 "concluida": concluida,
                 "dias": dias,
@@ -222,6 +280,8 @@ def avaliar_processo(pedido: Pedido, conf) -> dict:
                 (inicio_lem - hoje).days if lem_aguardando_inicio else None
             )
             dias_na_etapa_atual = max(0, (hoje - inicio_lem).days)
+        elif etapa_atual_chave == "producao" and producao_inicio_em is not None:
+            dias_na_etapa_atual = max(0, (hoje - producao_inicio_em.date()).days)
         else:
             data_anterior = (
                 datas[ETAPAS_PROCESSO[primeira_pendente_idx - 1][0]]
@@ -254,11 +314,17 @@ def avaliar_processo(pedido: Pedido, conf) -> dict:
         "pcp_data": etapa.pcp_data if etapa else None,
         "producao_plan_inicio": etapa.producao_plan_inicio if etapa else None,
         "producao_plan_fim": etapa.producao_plan_fim if etapa else None,
-        "producao_fim": etapa.producao_fim if etapa else None,
+        "producao_fim": producao_data,
+        "producao_automatica": producao_automatica,
+        "producao_inicio_em": producao_inicio_em,
+        "producao_fim_em": producao_fim_em,
         "comercial_data": etapa.comercial_data if etapa else None,
         "inspecao_agendada_data": inspecao_agendada,
         "inicio_lem_data": inicio_lem,
-        "lem_data": etapa.lem_data if etapa else None,
+        "lem_data": lem_data,
+        "lem_automatico": lem_automatico,
+        "lem_inicio_em": lem_inicio_em,
+        "lem_fim_em": lem_fim_em,
         "faturamento_em": faturamento_em,
         "embarque_em": embarque_em,
         "expedicao_data": embarque_data,
@@ -490,11 +556,35 @@ def agregar_por_cliente(resultados: list[ResultadoPedido]) -> list[dict]:
     return saida
 
 
-def agregar_processo(resultados: list[ResultadoPedido]) -> dict:
-    """Consolida as etapas de todos os pedidos para identificar o gargalo."""
+def _percentil(ordenados: list[int], p: float) -> float | None:
+    """Percentil por interpolacao linear em uma lista ja ordenada."""
+    if not ordenados:
+        return None
+    if len(ordenados) == 1:
+        return float(ordenados[0])
+    posicao = (len(ordenados) - 1) * p
+    baixo = int(posicao)
+    alto = min(baixo + 1, len(ordenados) - 1)
+    valor = ordenados[baixo] + (ordenados[alto] - ordenados[baixo]) * (posicao - baixo)
+    return round(valor, 1)
+
+
+def agregar_processo(
+    resultados: list[ResultadoPedido],
+    metas_dias: dict[str, int] | None = None,
+) -> dict:
+    """Consolida as etapas dos pedidos contra a meta global de dias.
+
+    O realizado (media, mediana, P25/P90) considera so pedidos que ja passaram
+    pela etapa, entao um pedido parado hoje nao o afeta ate sair dela. Por isso
+    ``acima_meta`` e ``parado_max_dias`` olham separadamente os pedidos que
+    estao AGORA na etapa.
+    """
+    metas = METAS_DIAS_PADRAO if metas_dias is None else metas_dias
     contagem_atual: dict[str, int] = {}
-    soma_dias: dict[str, int] = {}
-    qtd_dias: dict[str, int] = {}
+    dias_concluidos: dict[str, list[int]] = {}
+    dias_em_andamento: dict[str, list[int]] = {}
+    lead_times: list[int] = []
     total_em_processo = 0
     total_concluido = 0
 
@@ -508,20 +598,34 @@ def agregar_processo(resultados: list[ResultadoPedido]) -> dict:
             total_em_processo += 1
             atual = proc["etapa_atual"]
             contagem_atual[atual] = contagem_atual.get(atual, 0) + 1
+            if proc["dias_na_etapa_atual"] is not None:
+                dias_em_andamento.setdefault(atual, []).append(
+                    proc["dias_na_etapa_atual"]
+                )
+        if proc["lead_time_dias"] is not None:
+            lead_times.append(proc["lead_time_dias"])
         for et in proc["etapas"]:
             if et["dias"] is not None:
-                soma_dias[et["chave"]] = soma_dias.get(et["chave"], 0) + et["dias"]
-                qtd_dias[et["chave"]] = qtd_dias.get(et["chave"], 0) + 1
+                dias_concluidos.setdefault(et["chave"], []).append(et["dias"])
 
     etapas_out: list[dict] = []
     gargalo: str | None = None
     gargalo_media = -1.0
+    maior_desvio: str | None = None
+    maior_desvio_dias = 0.0
     for chave, nome in ETAPAS_PROCESSO:
-        q = qtd_dias.get(chave, 0)
-        media = round(soma_dias[chave] / q, 1) if q else None
+        concluidos = sorted(dias_concluidos.get(chave, []))
+        q = len(concluidos)
+        media = round(sum(concluidos) / q, 1) if q else None
+        meta = metas.get(chave)
         if chave != "pedido" and media is not None and media > gargalo_media:
             gargalo_media = media
             gargalo = chave
+        if meta is not None and media is not None and media - meta > maior_desvio_dias:
+            maior_desvio_dias = media - meta
+            maior_desvio = chave
+
+        andamento = dias_em_andamento.get(chave, [])
         etapas_out.append(
             {
                 "chave": chave,
@@ -529,6 +633,14 @@ def agregar_processo(resultados: list[ResultadoPedido]) -> dict:
                 "em_andamento": contagem_atual.get(chave, 0),
                 "concluidas": q,
                 "dias_medio": media,
+                "meta_dias": meta,
+                "dias_mediana": _percentil(concluidos, 0.5),
+                "dias_p25": _percentil(concluidos, 0.25),
+                "dias_p90": _percentil(concluidos, 0.9),
+                "acima_meta": (
+                    sum(1 for d in andamento if d > meta) if meta is not None else 0
+                ),
+                "parado_max_dias": max(andamento) if andamento else None,
             }
         )
 
@@ -536,5 +648,11 @@ def agregar_processo(resultados: list[ResultadoPedido]) -> dict:
         "total_em_processo": total_em_processo,
         "total_concluido": total_concluido,
         "gargalo": gargalo,
+        "maior_desvio": maior_desvio,
+        "lead_time_medio": (
+            round(sum(lead_times) / len(lead_times), 1) if lead_times else None
+        ),
+        "lead_time_meta": sum(metas.values()) if metas else None,
+        "lead_time_n": len(lead_times),
         "etapas": etapas_out,
     }

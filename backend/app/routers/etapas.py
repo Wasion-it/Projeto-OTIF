@@ -56,7 +56,17 @@ def _erp_atual(pedido: Pedido) -> dict | None:
 
 
 def _valor_erp(pedido: Pedido, dados: dict | None, campo: str):
-    return dados.get(campo) if dados is not None else getattr(pedido, campo)
+    # getattr: o Pedido ORM (snapshot) nao tem os campos do LEM automatico.
+    return dados.get(campo) if dados is not None else getattr(pedido, campo, None)
+
+
+def _lem_automatico(pedido: Pedido, dados: dict | None) -> bool:
+    return bool(_valor_erp(pedido, dados, "lem_automatico"))
+
+
+def _producao_automatica(pedido: Pedido, dados: dict | None) -> bool:
+    return bool(_valor_erp(pedido, dados, "producao_automatica"))
+
 
 _CAMPOS_CONFIRMACAO = {
     "pcp": ("pcp_data", "pcp_obs"),
@@ -69,15 +79,20 @@ def _valores(
     etapa: EtapaProcesso,
     faturamento_em: datetime | None = None,
     embarque_em: datetime | None = None,
+    lem_automatico: bool = False,
+    producao_automatica: bool = False,
 ) -> dict:
     return {
         "pcp_data": etapa.pcp_data,
         "producao_plan_inicio": etapa.producao_plan_inicio,
         "producao_plan_fim": etapa.producao_plan_fim,
-        "producao_fim": etapa.producao_fim,
+        # Na Producao automatica a data manual e ignorada e o jigadb nao entra
+        # na sequencia: a lacracao pode anteceder o registro manual do PCP.
+        "producao_fim": None if producao_automatica else etapa.producao_fim,
         "comercial_data": etapa.comercial_data,
         "inspecao_agendada_data": etapa.inspecao_agendada_data,
-        "lem_data": etapa.lem_data,
+        # No LEM automatico a data manual e ignorada (o jigadb e a fonte).
+        "lem_data": None if lem_automatico else etapa.lem_data,
         "faturamento_data": faturamento_em.date() if faturamento_em else None,
         "embarque_data": embarque_em.date() if embarque_em else None,
     }
@@ -87,14 +102,26 @@ def _etapa_interna_atual(
     etapa: EtapaProcesso,
     faturamento_em: datetime | None = None,
     embarque_em: datetime | None = None,
+    lem_automatico: bool = False,
+    lem_fim_em: datetime | None = None,
+    producao_automatica: bool = False,
+    producao_fim_em: datetime | None = None,
 ) -> str | None:
     if etapa.pcp_data is None:
         return "pcp"
-    if etapa.producao_fim is None:
+    producao_concluida = (
+        producao_fim_em is not None
+        if producao_automatica
+        else etapa.producao_fim is not None
+    )
+    if not producao_concluida:
         return "producao"
     if etapa.comercial_data is None:
         return "comercial"
-    if etapa.lem_data is None:
+    lem_concluido = (
+        lem_fim_em is not None if lem_automatico else etapa.lem_data is not None
+    )
+    if not lem_concluido:
         return "lem"
     if faturamento_em is None:
         return "faturamento"
@@ -173,6 +200,10 @@ def negar_producao_pcp(
         pedido.etapa or EtapaProcesso(pedido_id=pedido.id),
         _valor_erp(pedido, erp, "faturamento_em"),
         _valor_erp(pedido, erp, "embarque_em"),
+        _lem_automatico(pedido, erp),
+        _valor_erp(pedido, erp, "lem_fim_em"),
+        _producao_automatica(pedido, erp),
+        _valor_erp(pedido, erp, "producao_fim_em"),
     )
     _exigir_etapa_atual(etapa_atual, "pcp")
 
@@ -207,6 +238,21 @@ def confirmar_etapa(
     if pedido is None:
         raise HTTPException(status_code=404, detail="Pedido nao encontrado")
     erp = _erp_atual(pedido)
+    lem_auto = _lem_automatico(pedido, erp)
+    if lem_auto and payload.etapa == "lem":
+        raise HTTPException(
+            status_code=409,
+            detail="A Inspecao LEM e registrada automaticamente pelas OS de "
+            "inspecao do jigadb; nao pode ser confirmada manualmente.",
+        )
+
+    producao_auto = _producao_automatica(pedido, erp)
+    if producao_auto and payload.etapa == "producao":
+        raise HTTPException(
+            status_code=409,
+            detail="A Producao e registrada automaticamente pela lacracao dos "
+            "medidores no jigadb; nao pode ser confirmada manualmente.",
+        )
 
     etapa = pedido.etapa or EtapaProcesso(pedido_id=pedido.id)
     _exigir_etapa_atual(
@@ -214,6 +260,10 @@ def confirmar_etapa(
             etapa,
             _valor_erp(pedido, erp, "faturamento_em"),
             _valor_erp(pedido, erp, "embarque_em"),
+            lem_auto,
+            _valor_erp(pedido, erp, "lem_fim_em"),
+            producao_auto,
+            _valor_erp(pedido, erp, "producao_fim_em"),
         ),
         payload.etapa,
     )
@@ -223,6 +273,8 @@ def confirmar_etapa(
         etapa,
         _valor_erp(pedido, erp, "faturamento_em"),
         _valor_erp(pedido, erp, "embarque_em"),
+        lem_auto,
+        producao_auto,
     )
     valores[campo_data] = payload.data
     _validar(_valor_erp(pedido, erp, "data_pedido"), **valores)
@@ -256,12 +308,15 @@ def agendar_inspecao_comercial(
     erp = _erp_atual(pedido)
 
     etapa = pedido.etapa or EtapaProcesso(pedido_id=pedido.id)
+    lem_auto = _lem_automatico(pedido, erp)
     if etapa.inspecao_agendada_data is not None:
         raise HTTPException(
             status_code=409,
             detail="A inspecao ja foi agendada; use o editor para uma correcao.",
         )
-    if etapa.lem_data is not None:
+    # No LEM automatico a inspecao do jigadb pode preceder o registro do
+    # Comercial; bloquear aqui deixaria o pedido preso na etapa Comercial.
+    if not lem_auto and etapa.lem_data is not None:
         raise HTTPException(
             status_code=409,
             detail="Nao e possivel agendar uma inspecao LEM ja concluida.",
@@ -272,6 +327,8 @@ def agendar_inspecao_comercial(
         etapa,
         _valor_erp(pedido, erp, "faturamento_em"),
         _valor_erp(pedido, erp, "embarque_em"),
+        lem_auto,
+        _producao_automatica(pedido, erp),
     )
     valores["comercial_data"] = comercial_data
     valores["inspecao_agendada_data"] = payload.inspecao_agendada_data
@@ -294,16 +351,21 @@ def salvar_etapa(pedido_id: int, payload: EtapaCreate, db: Session = Depends(get
     if pedido is None:
         raise HTTPException(status_code=404, detail="Pedido nao encontrado")
     erp = _erp_atual(pedido)
+    # No LEM automatico o editor nao toca no LEM: data e observacao manuais
+    # ficam como estao e nao entram na validacao da sequencia.
+    lem_auto = _lem_automatico(pedido, erp)
+    # Idem para a Producao: o fim real vem da lacracao e o editor nao o altera.
+    producao_auto = _producao_automatica(pedido, erp)
 
     _validar(
         _valor_erp(pedido, erp, "data_pedido"),
         pcp_data=payload.pcp_data,
         producao_plan_inicio=payload.producao_plan_inicio,
         producao_plan_fim=payload.producao_plan_fim,
-        producao_fim=payload.producao_fim,
+        producao_fim=None if producao_auto else payload.producao_fim,
         comercial_data=payload.comercial_data,
         inspecao_agendada_data=payload.inspecao_agendada_data,
-        lem_data=payload.lem_data,
+        lem_data=None if lem_auto else payload.lem_data,
         faturamento_data=(
             _valor_erp(pedido, erp, "faturamento_em").date()
             if _valor_erp(pedido, erp, "faturamento_em")
@@ -327,14 +389,16 @@ def salvar_etapa(pedido_id: int, payload: EtapaCreate, db: Session = Depends(get
     etapa.pcp_data = payload.pcp_data
     etapa.producao_plan_inicio = payload.producao_plan_inicio
     etapa.producao_plan_fim = payload.producao_plan_fim
-    etapa.producao_fim = payload.producao_fim
+    if not producao_auto:
+        etapa.producao_fim = payload.producao_fim
     etapa.comercial_data = payload.comercial_data
     etapa.inspecao_agendada_data = payload.inspecao_agendada_data
-    etapa.lem_data = payload.lem_data
+    if not lem_auto:
+        etapa.lem_data = payload.lem_data
+        etapa.lem_obs = payload.lem_obs
     etapa.pcp_obs = payload.pcp_obs
     etapa.producao_obs = payload.producao_obs
     etapa.comercial_obs = payload.comercial_obs
-    etapa.lem_obs = payload.lem_obs
     etapa.observacao = payload.observacao
     etapa.usuario = payload.usuario
 

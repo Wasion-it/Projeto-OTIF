@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-export const ROTAS_VALIDAS = ["pedidos", "visao-geral", "ajustes"];
+export const ROTAS_VALIDAS = ["pedidos", "comercial", "visao-geral", "ajustes"];
 // Pedidos é a tela de trabalho de todos os perfis, então é a entrada.
 const ROTA_PADRAO = "pedidos";
 
