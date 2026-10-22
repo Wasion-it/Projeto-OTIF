@@ -243,7 +243,7 @@ printf '%s' '<senha-do-jigadb>'    | docker secret create otif_jigadb_password -
 
 Os três são obrigatórios, mesmo com `LEM_SOURCE=manual` (use um valor qualquer para
 o `jigadb`). Use usuários **somente leitura** no Jundsoft e no jigadb. A rede
-`controle_overlay` (Traefik e Alloy) precisa existir. O runner precisa estar
+`apps` (a do Traefik, `providers.swarm.network=apps`) precisa existir. O runner precisa estar
 liberado para este repositório no grupo de runners da organização. O domínio
 `otif.wasion.com.br` fica fixo no `docker-compose.prod.yml` e no workflow de
 deploy (como no RH): o DNS precisa apontar para o Traefik e o certificado TLS
@@ -268,6 +268,8 @@ Variables (aba Variables):
 | `LEM_SOURCE`, `PRODUCAO_SOURCE` | não | default `manual`; `jigadb` exige `JIGADB_*` |
 | `JIGADB_HOST`, `JIGADB_PORT`, `JIGADB_DATABASE`, `JIGADB_USERNAME` | se usar `jigadb` | |
 | `DEPLOY_PROD_HOST_FINGERPRINT` | não | fixa a chave SSH do servidor (recomendado) |
+| `TRACING_ENABLED`, `TRACING_OTLP_ENDPOINT` | não | default `false`; ligue quando houver um Alloy alcançável |
+| `PYROSCOPE_ENABLED`, `PYROSCOPE_SERVER_ADDRESS` | não | idem, para profiling |
 
 Crie também o environment `prod` (Settings > Environments) se quiser exigir
 aprovação manual antes do deploy.
@@ -275,9 +277,10 @@ aprovação manual antes do deploy.
 ### Observabilidade
 
 O backend exporta traces (OpenTelemetry → Alloy → Tempo), profiles (Pyroscope) e
-logs em stdout com `trace_id`/`span_id` para correlação no Loki. Tudo vem desligado
-por padrão (`TRACING_ENABLED`, `PYROSCOPE_ENABLED`) e é ligado no
-`docker-compose.prod.yml`. `/health` devolve `version`, `commit` e `environment`.
+logs em stdout com `trace_id`/`span_id` para correlação no Loki. Traces e profiles
+vêm desligados por padrão (`TRACING_ENABLED`, `PYROSCOPE_ENABLED`) e são ligados
+pelas variables do GitHub quando houver um Alloy alcançável pelo backend (que fica
+só na rede interna da stack). `/health` devolve `version`, `commit` e `environment`.
 Cada deploy gera uma annotation no Grafana (tags `deploy`, `otif`, `prod`).
 
 ## Antes de produção

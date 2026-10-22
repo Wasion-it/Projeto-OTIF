@@ -88,15 +88,19 @@ services:
 
       CORS_ORIGINS: https://otif.wasion.com.br
 
-      # Observabilidade: traces (Tempo), profiles (Pyroscope) e logs (Loki) via Alloy.
+      # Observabilidade. Logs com trace_id/span_id sempre saem em stdout.
+      # Traces (Tempo) e profiles (Pyroscope) ficam DESLIGADOS ate existir um
+      # coletor (Grafana Alloy) alcancavel pelo backend: defina as variables
+      # TRACING_ENABLED=true / PYROSCOPE_ENABLED=true e os enderecos no GitHub.
+      # O backend nao esta na rede `apps`; para alcancar um Alloy nela, adicione-a.
       LOG_LEVEL: INFO
-      TRACING_ENABLED: "true"
+      TRACING_ENABLED: ${TRACING_ENABLED:-false}
       TRACING_SERVICE_NAME: otif-backend
       TRACING_ENVIRONMENT: production
-      TRACING_OTLP_ENDPOINT: http://alloy:4318/v1/traces
+      TRACING_OTLP_ENDPOINT: ${TRACING_OTLP_ENDPOINT:-http://alloy:4318/v1/traces}
       TRACING_EXCLUDED_URLS: /docs,/redoc,/openapi.json,/health
-      PYROSCOPE_ENABLED: "true"
-      PYROSCOPE_SERVER_ADDRESS: http://alloy:9999
+      PYROSCOPE_ENABLED: ${PYROSCOPE_ENABLED:-false}
+      PYROSCOPE_SERVER_ADDRESS: ${PYROSCOPE_SERVER_ADDRESS:-http://alloy:9999}
       PYROSCOPE_APPLICATION_NAME: otif-backend
       PYROSCOPE_ENVIRONMENT: production
     secrets:
@@ -110,9 +114,9 @@ services:
       retries: 10
       start_period: 60s
     networks:
+      # Somente rede interna: a API nao tem autenticacao e nao deve ficar
+      # visivel para as demais stacks da rede compartilhada `apps`.
       - otif_internal
-      # Alcanca o Alloy (OTLP/Pyroscope), que vive na rede compartilhada.
-      - controle_overlay
     deploy:
       replicas: 1
       restart_policy:
@@ -135,7 +139,8 @@ services:
       BACKEND_UPSTREAM: http://otif-backend:8000
     networks:
       - otif_internal
-      - controle_overlay
+      # Rede do Traefik (providers.swarm.network=apps).
+      - apps
     deploy:
       replicas: 1
       restart_policy:
@@ -148,7 +153,7 @@ services:
         - "portainer.stack=otif"
         - "portainer.service=frontend"
         - "traefik.enable=true"
-        - "traefik.docker.network=controle_overlay"
+        - "traefik.docker.network=apps"
         - "traefik.http.routers.otif.rule=Host(`otif.wasion.com.br`)"
         - "traefik.http.routers.otif.entrypoints=websecure"
         - "traefik.http.routers.otif.tls=true"
@@ -159,8 +164,9 @@ volumes:
   otif-postgres-data:
 
 networks:
-  # Rede compartilhada com Traefik e Alloy (ja existe no Swarm).
-  controle_overlay:
+  # Rede compartilhada com o Traefik (ja existe no Swarm).
+  apps:
+    name: apps
     external: true
 
   otif_internal:
