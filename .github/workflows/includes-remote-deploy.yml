@@ -180,9 +180,11 @@ jobs:
               done
             done
 
+            # --resolve força o Traefik DESTE servidor: valida rota, TLS e a versão
+            # publicada sem depender do DNS (que pode ainda não apontar para cá).
             echo "Validando versão publicada via healthcheck..."
             for i in $(seq 1 12); do
-              HEALTH=$(curl -fsSk "https://otif.wasion.com.br/health" || true)
+              HEALTH=$(curl -fsSk --max-time 10 --resolve otif.wasion.com.br:443:127.0.0.1 "https://otif.wasion.com.br/health" || true)
               echo "  [${i}/12] ${HEALTH}"
               if echo "$HEALTH" | grep -Fq "\"commit\":\"${APP_COMMIT}\""; then
                 echo "Healthcheck confirma o commit publicado: ${APP_COMMIT}"

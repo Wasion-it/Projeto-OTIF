@@ -250,9 +250,11 @@ Os três são obrigatórios, mesmo com `LEM_SOURCE=manual` (use um valor qualque
 o `jigadb`). Use usuários **somente leitura** no Jundsoft e no jigadb. A rede
 `apps` (a do Traefik, `providers.swarm.network=apps`) precisa existir. O runner precisa estar
 liberado para este repositório no grupo de runners da organização. O domínio
-`otif.wasion.com.br` fica fixo no `docker-compose.prod.yml` e no workflow de
-deploy (como no RH): o DNS precisa apontar para o Traefik e o certificado TLS
-precisa cobrir esse nome.
+`otif.wasion.com.br` fica fixo no `docker-compose.prod.yml` (como no RH). Para os
+usuários acessarem, crie no DNS um registro A `otif.wasion.com.br` apontando para
+o IP do servidor do Traefik (hoje `10.10.1.222`; atenção a registros curinga
+`*.wasion.com.br` que apontem para outro servidor). O healthcheck do deploy não
+depende do DNS: ele testa o Traefik do próprio servidor.
 
 ### Configuração no GitHub
 

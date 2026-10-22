@@ -165,7 +165,13 @@ services:
         - "portainer.stack=otif"
         - "portainer.service=frontend"
         - "traefik.enable=true"
-        - "traefik.docker.network=apps"
+        # Provider Swarm do Traefik (providers.swarm): a label de rede e swarm.network.
+        - "traefik.swarm.network=apps"
+        # HTTP -> HTTPS (mesmo padrao do sistema-downtime neste Traefik).
+        - "traefik.http.middlewares.otif-https-redirect.redirectscheme.scheme=https"
+        - "traefik.http.routers.otif-http.rule=Host(`otif.wasion.com.br`)"
+        - "traefik.http.routers.otif-http.entrypoints=web"
+        - "traefik.http.routers.otif-http.middlewares=otif-https-redirect"
         - "traefik.http.routers.otif.rule=Host(`otif.wasion.com.br`)"
         - "traefik.http.routers.otif.entrypoints=websecure"
         - "traefik.http.routers.otif.tls=true"
