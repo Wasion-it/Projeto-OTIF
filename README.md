@@ -241,6 +241,11 @@ printf '%s' '<senha-do-jundsoft>'  | docker secret create otif_jundsoft_password
 printf '%s' '<senha-do-jigadb>'    | docker secret create otif_jigadb_password -
 ```
 
+Backend, frontend e Postgres ficam **fixos no nó `wbrmao001dev`** (`placement` no
+`docker-compose.prod.yml`): o volume do banco é local ao nó e a rede overlay entre
+os nós deste Swarm não é confiável. Para mudar de nó, edite a constraint e migre o
+volume `otif_otif-postgres-data` antes.
+
 Os três são obrigatórios, mesmo com `LEM_SOURCE=manual` (use um valor qualquer para
 o `jigadb`). Use usuários **somente leitura** no Jundsoft e no jigadb. A rede
 `apps` (a do Traefik, `providers.swarm.network=apps`) precisa existir. O runner precisa estar

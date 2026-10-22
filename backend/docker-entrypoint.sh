@@ -71,18 +71,25 @@ url = os.environ.get("DATABASE_URL", "")
 if not url:
     sys.exit("[entrypoint] ERRO: DATABASE_URL nao definida")
 
-engine = create_engine(url, pool_pre_ping=True)
+# connect_timeout evita ficar pendurado para sempre quando o pacote e descartado
+# (ex.: rede overlay entre nos bloqueada): sem ele nenhuma tentativa e registrada.
+engine = create_engine(url, pool_pre_ping=True, connect_args={"connect_timeout": 5})
 for tentativa in range(1, 31):
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
-        print("[entrypoint] Banco pronto.")
+        print("[entrypoint] Banco pronto.", flush=True)
         break
     except Exception as exc:  # noqa: BLE001 - qualquer falha de conexao e tentada de novo
-        print(f"[entrypoint]   tentativa {tentativa}/30: {type(exc).__name__}")
+        # Mostra o motivo (1a linha) sem expor a URL/senha.
+        motivo = str(exc).strip().splitlines()[0] if str(exc).strip() else ""
+        print(
+            f"[entrypoint]   tentativa {tentativa}/30: {type(exc).__name__}: {motivo[:160]}",
+            flush=True,
+        )
         time.sleep(2)
 else:
-    sys.exit("[entrypoint] ERRO: banco indisponivel apos 60s")
+    sys.exit("[entrypoint] ERRO: banco indisponivel apos ~3 min")
 PY
     echo "[entrypoint] RUN_MIGRATIONS=true -> alembic upgrade head"
     alembic upgrade head

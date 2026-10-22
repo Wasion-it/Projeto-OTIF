@@ -20,6 +20,15 @@ x-logging: &default-logging
     max-size: "10m"
     max-file: "3"
 
+# Todos os servicos rodam no mesmo no do Swarm:
+# - o volume do Postgres e local ao no; sem fixar, um reagendamento em outro no
+#   subiria um banco vazio;
+# - a rede overlay entre nos deste Swarm nao e confiavel (conexao ficava pendurada),
+#   entao backend, frontend e banco precisam estar juntos.
+x-placement: &placement
+  constraints:
+    - node.hostname == wbrmao001dev
+
 services:
   otif-postgres:
     image: postgres:16-alpine
@@ -43,6 +52,7 @@ services:
       replicas: 1
       restart_policy:
         condition: any
+      placement: *placement
       labels:
         - "portainer.stack=otif"
         - "portainer.service=postgres"
@@ -127,6 +137,7 @@ services:
         failure_action: rollback
       rollback_config:
         order: start-first
+      placement: *placement
       labels:
         - "portainer.stack=otif"
         - "portainer.service=backend"
@@ -149,6 +160,7 @@ services:
         order: start-first
         monitor: 15s
         failure_action: rollback
+      placement: *placement
       labels:
         - "portainer.stack=otif"
         - "portainer.service=frontend"
