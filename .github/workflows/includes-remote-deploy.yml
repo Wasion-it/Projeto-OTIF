@@ -164,16 +164,14 @@ jobs:
                 UPDATE_STATE=$(docker service inspect "${STACK_NAME}_${service}" \
                   --format '{{if .UpdateStatus}}{{.UpdateStatus.State}}{{else}}none{{end}}')
                 echo "  [${i}/36] ${service} update: ${UPDATE_STATE}"
-                case "$UPDATE_STATE" in
-                  completed|none)
-                    break
-                    ;;
-                  rollback_started|rollback_completed|paused)
-                    echo "ERRO: ${service} não ficou saudável e o Swarm iniciou rollback. Logs:"
-                    docker service logs "${STACK_NAME}_${service}" --tail 80 || true
-                    exit 1
-                    ;;
-                esac
+                if [ "$UPDATE_STATE" = "completed" ] || [ "$UPDATE_STATE" = "none" ]; then
+                  break
+                fi
+                if echo "$UPDATE_STATE" | grep -Eq '^(rollback_started|rollback_completed|paused)$'; then
+                  echo "ERRO: ${service} não ficou saudável e o Swarm iniciou rollback. Logs:"
+                  docker service logs "${STACK_NAME}_${service}" --tail 80 || true
+                  exit 1
+                fi
                 if [ "$i" -eq 36 ]; then
                   echo "ERRO: ${service} não convergiu a tempo. Logs:"
                   docker service logs "${STACK_NAME}_${service}" --tail 80 || true
