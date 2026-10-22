@@ -73,7 +73,9 @@ if not url:
 
 # connect_timeout evita ficar pendurado para sempre quando o pacote e descartado
 # (ex.: rede overlay entre nos bloqueada): sem ele nenhuma tentativa e registrada.
-engine = create_engine(url, pool_pre_ping=True, connect_args={"connect_timeout": 5})
+# (SQLite nao aceita esse argumento, entao so se aplica aos demais bancos.)
+connect_args = {} if url.startswith("sqlite") else {"connect_timeout": 5}
+engine = create_engine(url, pool_pre_ping=True, connect_args=connect_args)
 for tentativa in range(1, 31):
     try:
         with engine.connect() as conn:
