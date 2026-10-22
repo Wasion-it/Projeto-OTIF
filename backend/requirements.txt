@@ -1,4 +1,4 @@
-fastapi==0.115.5
+fastapi==0.142.2
 uvicorn==0.32.1
 pydantic==2.10.3
 pydantic-settings==2.6.1
@@ -27,4 +27,4 @@ alembic==1.14.0
 psycopg[binary]==3.2.3
 
 # --- Desenvolvimento / testes ---
-pytest==8.3.4
+pytest==9.0.3

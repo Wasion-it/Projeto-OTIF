@@ -1,0 +1,46 @@
+name: Pull Request Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  setup:
+    name: Preparar ambiente
+    uses: ./.github/workflows/includes-environment.yml
+    with:
+      environment: code-test
+
+  test:
+    name: Validar projeto
+    needs: setup
+    uses: ./.github/workflows/includes-test.yml
+    with:
+      environment: ${{ needs.setup.outputs.environment }}
+      python_version: ${{ needs.setup.outputs.python_version }}
+      node_version: ${{ needs.setup.outputs.node_version }}
+
+  security:
+    name: Validar segurança
+    uses: ./.github/workflows/includes-security.yml
+    permissions:
+      contents: read
+
+  container-build:
+    name: Validar build das imagens Docker
+    needs: [test, security]
+    uses: ./.github/workflows/includes-container-build.yml
+    permissions:
+      contents: read
+    with:
+      image_tag: pr-${{ github.event.pull_request.number }}-${{ github.sha }}
+      push: false

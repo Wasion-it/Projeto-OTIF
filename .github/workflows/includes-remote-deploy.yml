@@ -1,0 +1,232 @@
+name: Deploy imutável no servidor
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Nome do ambiente'
+        required: true
+        type: string
+      runner_label:
+        description: 'Label do runner interno usado para executar o deploy'
+        required: false
+        type: string
+        default: 'self-hosted'
+      deploy_host:
+        description: 'Host do servidor de deploy'
+        required: true
+        type: string
+      deploy_user:
+        description: 'Usuário do servidor de deploy'
+        required: true
+        type: string
+      deploy_path:
+        description: 'Diretório de deploy no servidor'
+        required: true
+        type: string
+      image_tag:
+        description: 'Tag imutável das imagens publicadas no Registry Wasion'
+        required: true
+        type: string
+
+    secrets:
+      DEPLOY_PROD_SSH_KEY:
+        required: true
+      REGISTRY_USERNAME:
+        required: true
+      REGISTRY_PASSWORD:
+        required: true
+
+jobs:
+  deploy:
+    name: Publicar imagens versionadas no servidor
+    runs-on: ${{ inputs.runner_label }}
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Preparar manifesto de produção
+        shell: bash
+        run: |
+          mkdir -p deploy-package
+          cp docker-compose.prod.yml deploy-package/docker-compose.prod.yml
+
+      - name: Preparar destino no servidor
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ inputs.deploy_host }}
+          username: ${{ inputs.deploy_user }}
+          key: ${{ secrets.DEPLOY_PROD_SSH_KEY }}
+          fingerprint: ${{ vars.DEPLOY_PROD_HOST_FINGERPRINT }}
+          script_stop: true
+          script: |
+            set -e
+            mkdir -p "${{ inputs.deploy_path }}"
+
+      - name: Enviar somente o manifesto de deploy
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ inputs.deploy_host }}
+          username: ${{ inputs.deploy_user }}
+          key: ${{ secrets.DEPLOY_PROD_SSH_KEY }}
+          fingerprint: ${{ vars.DEPLOY_PROD_HOST_FINGERPRINT }}
+          source: deploy-package/docker-compose.prod.yml
+          target: ${{ inputs.deploy_path }}
+          strip_components: 1
+
+      - name: Publicar aplicação no servidor
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+          ERP_SOURCE: ${{ vars.ERP_SOURCE }}
+          ERP_READ_MODE: ${{ vars.ERP_READ_MODE }}
+          JUNDSOFT_HOST: ${{ vars.JUNDSOFT_HOST }}
+          JUNDSOFT_PORT: ${{ vars.JUNDSOFT_PORT }}
+          JUNDSOFT_DATABASE: ${{ vars.JUNDSOFT_DATABASE }}
+          JUNDSOFT_USERNAME: ${{ vars.JUNDSOFT_USERNAME }}
+          JUNDSOFT_TRUST_SERVER_CERTIFICATE: ${{ vars.JUNDSOFT_TRUST_SERVER_CERTIFICATE }}
+          LEM_SOURCE: ${{ vars.LEM_SOURCE }}
+          PRODUCAO_SOURCE: ${{ vars.PRODUCAO_SOURCE }}
+          JIGADB_HOST: ${{ vars.JIGADB_HOST }}
+          JIGADB_PORT: ${{ vars.JIGADB_PORT }}
+          JIGADB_DATABASE: ${{ vars.JIGADB_DATABASE }}
+          JIGADB_USERNAME: ${{ vars.JIGADB_USERNAME }}
+        with:
+          host: ${{ inputs.deploy_host }}
+          username: ${{ inputs.deploy_user }}
+          key: ${{ secrets.DEPLOY_PROD_SSH_KEY }}
+          fingerprint: ${{ vars.DEPLOY_PROD_HOST_FINGERPRINT }}
+          script_stop: true
+          envs: REGISTRY_USERNAME,REGISTRY_PASSWORD,ERP_SOURCE,ERP_READ_MODE,JUNDSOFT_HOST,JUNDSOFT_PORT,JUNDSOFT_DATABASE,JUNDSOFT_USERNAME,JUNDSOFT_TRUST_SERVER_CERTIFICATE,LEM_SOURCE,PRODUCAO_SOURCE,JIGADB_HOST,JIGADB_PORT,JIGADB_DATABASE,JIGADB_USERNAME
+          script: |
+            set -e
+
+            STACK_NAME="otif"
+            IMAGE_TAG="${{ inputs.image_tag }}"
+            export BACKEND_IMAGE="registry.wasion.com.br/wasion/otif-backend:${IMAGE_TAG}"
+            export FRONTEND_IMAGE="registry.wasion.com.br/wasion/otif-frontend:${IMAGE_TAG}"
+            export APP_VERSION="${IMAGE_TAG}"
+            export APP_COMMIT="${{ github.sha }}"
+            export APP_ENVIRONMENT="${{ inputs.environment }}"
+
+            mkdir -p "${{ inputs.deploy_path }}"
+            cd "${{ inputs.deploy_path }}"
+
+            if ! docker info --format '{{.Swarm.LocalNodeState}} {{.Swarm.ControlAvailable}}' | grep -Eq '^active true$'; then
+              echo 'Este servidor não está ativo como manager do Swarm'
+              exit 1
+            fi
+
+            echo 'Validando Docker Swarm Secrets obrigatórias...'
+            for secret in \
+              otif_postgres_password \
+              otif_jundsoft_password \
+              otif_jigadb_password; do
+              if ! docker secret inspect "$secret" >/dev/null 2>&1; then
+                echo "ERRO: Docker Swarm Secret ausente: $secret"
+                exit 1
+              fi
+            done
+
+            echo "$REGISTRY_PASSWORD" | docker login registry.wasion.com.br \
+              -u "$REGISTRY_USERNAME" \
+              --password-stdin
+
+            echo "Baixando imagens imutáveis do Registry Wasion..."
+            docker pull "$BACKEND_IMAGE"
+            docker pull "$FRONTEND_IMAGE"
+
+            echo "Validando manifesto de produção..."
+            docker stack config -c docker-compose.prod.yml >/dev/null
+
+            echo "Publicando stack com imagens versionadas..."
+            docker stack deploy \
+              --with-registry-auth \
+              --prune \
+              -c docker-compose.prod.yml \
+              "$STACK_NAME"
+
+            # failure_action=rollback: se a nova versão não ficar saudável no período
+            # de monitoramento, o Swarm volta sozinho para a anterior. O deploy deve
+            # falhar nesse caso, mesmo que o serviço antigo continue respondendo.
+            echo "Aguardando o update dos serviços convergir (até 180s)..."
+            for service in otif-backend otif-frontend; do
+              for i in $(seq 1 36); do
+                sleep 5
+                UPDATE_STATE=$(docker service inspect "${STACK_NAME}_${service}" \
+                  --format '{{if .UpdateStatus}}{{.UpdateStatus.State}}{{else}}none{{end}}')
+                echo "  [${i}/36] ${service} update: ${UPDATE_STATE}"
+                case "$UPDATE_STATE" in
+                  completed|none)
+                    break
+                    ;;
+                  rollback_started|rollback_completed|paused)
+                    echo "ERRO: ${service} não ficou saudável e o Swarm iniciou rollback. Logs:"
+                    docker service logs "${STACK_NAME}_${service}" --tail 80 || true
+                    exit 1
+                    ;;
+                esac
+                if [ "$i" -eq 36 ]; then
+                  echo "ERRO: ${service} não convergiu a tempo. Logs:"
+                  docker service logs "${STACK_NAME}_${service}" --tail 80 || true
+                  exit 1
+                fi
+              done
+            done
+
+            echo "Validando versão publicada via healthcheck..."
+            for i in $(seq 1 12); do
+              HEALTH=$(curl -fsSk "https://otif.wasion.com.br/health" || true)
+              echo "  [${i}/12] ${HEALTH}"
+              if echo "$HEALTH" | grep -Fq "\"commit\":\"${APP_COMMIT}\""; then
+                echo "Healthcheck confirma o commit publicado: ${APP_COMMIT}"
+                break
+              fi
+              if [ "$i" -eq 12 ]; then
+                echo 'ERRO: healthcheck não confirmou o commit esperado.'
+                docker service logs "${STACK_NAME}_otif-backend" --tail 80 || true
+                exit 1
+              fi
+              sleep 5
+            done
+
+            echo "Serviços da stack:"
+            docker stack services "$STACK_NAME"
+
+            echo "Imagens em execução:"
+            docker service inspect "${STACK_NAME}_otif-backend" --format '{{.Spec.TaskTemplate.ContainerSpec.Image}}'
+            docker service inspect "${STACK_NAME}_otif-frontend" --format '{{.Spec.TaskTemplate.ContainerSpec.Image}}'
+
+            echo "Metadados do backend:"
+            docker service inspect "${STACK_NAME}_otif-backend" \
+              --format '{{range .Spec.TaskTemplate.ContainerSpec.Env}}{{println .}}{{end}}' | grep '^APP_' || true
+
+            echo "Secrets anexadas ao backend:"
+            docker service inspect "${STACK_NAME}_otif-backend" \
+              --format '{{range .Spec.TaskTemplate.ContainerSpec.Secrets}}{{println .SecretName}}{{end}}' || true
+
+            docker logout registry.wasion.com.br || true
+
+      - name: Resumo do deploy
+        shell: bash
+        run: |
+          {
+            echo '## Deploy imutável concluído'
+            echo ''
+            echo "- Ambiente: ${{ inputs.environment }}"
+            echo "- Servidor: ${{ inputs.deploy_host }}"
+            echo '- URL: https://otif.wasion.com.br'
+            echo '- Stack: otif'
+            echo "- Tag: ${{ inputs.image_tag }}"
+            echo "- Commit: ${{ github.sha }}"
+            echo "- Executado por: ${{ github.actor }}"
+            echo "- GitHub Run: #${{ github.run_number }}"
+            echo "- Backend: registry.wasion.com.br/wasion/otif-backend:${{ inputs.image_tag }}"
+            echo "- Frontend: registry.wasion.com.br/wasion/otif-frontend:${{ inputs.image_tag }}"
+            echo '- Healthcheck: commit publicado validado'
+            echo '- Segredos da aplicação: Docker Swarm Secrets'
+          } >> "$GITHUB_STEP_SUMMARY"

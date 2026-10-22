@@ -24,7 +24,9 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Injeta a URL da aplicacao (sobrescreve qualquer valor do alembic.ini).
-config.set_main_option("sqlalchemy.url", get_settings().database_url)
+# O configparser interpreta '%' (interpolacao); senhas com URL-encoding (%40, %23...)
+# quebrariam a migration. '%%' e o escape e volta a '%' ao ler a opcao.
+config.set_main_option("sqlalchemy.url", get_settings().database_url.replace("%", "%%"))
 
 target_metadata = Base.metadata
 

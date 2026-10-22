@@ -148,6 +148,29 @@ class Settings(BaseSettings):
             and self.erp_read_mode == "direct"
         )
 
+    # --- Identidade do deploy (preenchida pelo pipeline em producao) ---
+    # Expostas em /health para o deploy confirmar que a versao publicada e a esperada.
+    app_version: str = "unknown"
+    app_commit: str = "unknown"
+    app_environment: str = "unknown"
+
+    # --- Observabilidade ---
+    log_level: str = "INFO"
+
+    # Tracing distribuido (OpenTelemetry -> Grafana Alloy via OTLP/HTTP).
+    tracing_enabled: bool = False
+    tracing_service_name: str = "otif-backend"
+    tracing_environment: str = "development"
+    tracing_otlp_endpoint: str = "http://alloy:4318/v1/traces"
+    # Rotas ignoradas no tracing, separadas por virgula (regex, como no OTel).
+    tracing_excluded_urls: str = "/docs,/redoc,/openapi.json,/health"
+
+    # Continuous profiling (Grafana Pyroscope -> Grafana Alloy).
+    pyroscope_enabled: bool = False
+    pyroscope_server_address: str = "http://alloy:9999"
+    pyroscope_application_name: str = "otif-backend"
+    pyroscope_environment: str = "development"
+
     # Origens liberadas no CORS (frontend).
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 

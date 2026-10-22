@@ -1,0 +1,73 @@
+name: Publicar release
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Ambiente de execução'
+        required: true
+        type: string
+      image_tag:
+        description: 'Tag imutável publicada em produção'
+        required: true
+        type: string
+    outputs:
+      release_url:
+        description: 'URL do release criado'
+        value: ${{ jobs.release.outputs.release_url }}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      release_url: ${{ steps.create_release.outputs.url }}
+    steps:
+      - name: Preparar metadados do release
+        id: metadata
+        shell: bash
+        run: |
+          echo "deployed_at=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_OUTPUT"
+          echo "run_url=https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" >> "$GITHUB_OUTPUT"
+
+      - name: Criar release no GitHub
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: release-${{ github.run_number }}
+          # A tag precisa apontar para o commit publicado, não para o HEAD do branch padrão.
+          target_commitish: ${{ github.sha }}
+          name: 'Projeto OTIF - ${{ inputs.environment }} #${{ github.run_number }}'
+          body: |
+            Release automática do Projeto OTIF.
+
+            - Ambiente: ${{ inputs.environment }}
+            - Commit: `${{ github.sha }}`
+            - Tag imutável: `${{ inputs.image_tag }}`
+            - Backend: `registry.wasion.com.br/wasion/otif-backend:${{ inputs.image_tag }}`
+            - Frontend: `registry.wasion.com.br/wasion/otif-frontend:${{ inputs.image_tag }}`
+            - Executado por: `${{ github.actor }}`
+            - GitHub Run: #${{ github.run_number }}
+            - Run ID: `${{ github.run_id }}`
+            - Publicado em UTC: `${{ steps.metadata.outputs.deployed_at }}`
+            - Pipeline: ${{ steps.metadata.outputs.run_url }}
+          draft: false
+          prerelease: false
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Resumo do release
+        shell: bash
+        run: |
+          {
+            echo '## Release publicado'
+            echo ''
+            echo "- Ambiente: ${{ inputs.environment }}"
+            echo "- Commit: ${{ github.sha }}"
+            echo "- Tag: ${{ inputs.image_tag }}"
+            echo "- Executado por: ${{ github.actor }}"
+            echo "- Publicado em UTC: ${{ steps.metadata.outputs.deployed_at }}"
+            echo "- URL: ${{ steps.create_release.outputs.url }}"
+          } >> "$GITHUB_STEP_SUMMARY"

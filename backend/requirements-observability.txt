@@ -1,0 +1,11 @@
+# Observabilidade (opcional): tracing OpenTelemetry + profiling Pyroscope.
+# Instalado na imagem Docker; no desenvolvimento local e dispensavel, pois os
+# modulos em app/observability importam estes pacotes sob demanda.
+# (pyroscope-io e extensao nativa e pode nao ter wheel em Python 32-bit/Windows.)
+opentelemetry-api==1.45.0
+opentelemetry-sdk==1.45.0
+opentelemetry-exporter-otlp-proto-http==1.45.0
+opentelemetry-instrumentation-fastapi==0.66b0
+opentelemetry-instrumentation-sqlalchemy==0.66b0
+pyroscope-io==1.2.4
+pyroscope-otel==1.1.0

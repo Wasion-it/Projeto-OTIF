@@ -34,8 +34,9 @@ RUN set -eux; \
 WORKDIR /app
 
 # Dependencias primeiro para aproveitar o cache de camadas.
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# requirements-observability.txt: OpenTelemetry + Pyroscope (ativados por env).
+COPY requirements.txt requirements-observability.txt ./
+RUN pip install --no-cache-dir -r requirements.txt -r requirements-observability.txt
 
 # Usuario nao-root dedicado.
 RUN groupadd --system --gid 10001 otif \
@@ -55,6 +56,7 @@ USER otif
 EXPOSE 8000
 
 # Healthcheck via stdlib (curl nao esta presente na imagem final).
+# O Swarm herda este HEALTHCHECK; o compose de producao o repete de forma explicita.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
     CMD ["python", "-c", "import sys, urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4).status == 200 else 1)"]
 

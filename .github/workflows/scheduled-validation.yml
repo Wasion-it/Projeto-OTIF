@@ -1,0 +1,65 @@
+name: Validação agendada
+
+# Pega regressões que não vêm de código novo: dependências, imagens base e
+# CVEs publicadas depois do último PR. Segunda-feira, 03:00 UTC.
+on:
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  setup:
+    name: Preparar ambiente
+    uses: ./.github/workflows/includes-environment.yml
+    with:
+      environment: scheduled
+
+  test:
+    name: Validar projeto
+    needs: setup
+    uses: ./.github/workflows/includes-test.yml
+    with:
+      environment: ${{ needs.setup.outputs.environment }}
+      python_version: ${{ needs.setup.outputs.python_version }}
+      node_version: ${{ needs.setup.outputs.node_version }}
+
+  security:
+    name: Validar segurança
+    uses: ./.github/workflows/includes-security.yml
+    permissions:
+      contents: read
+
+  container-build:
+    name: Validar build das imagens Docker
+    needs: [test, security]
+    uses: ./.github/workflows/includes-container-build.yml
+    permissions:
+      contents: read
+    with:
+      image_tag: scheduled-${{ github.sha }}
+      push: false
+
+  report:
+    name: Resumo final
+    runs-on: ubuntu-latest
+    if: ${{ always() }}
+    needs: [setup, test, security, container-build]
+    steps:
+      - name: Gerar resumo
+        shell: bash
+        run: |
+          {
+            echo '## Validação agendada concluída'
+            echo ''
+            echo "- Projeto: ${{ needs.setup.outputs.project }}"
+            echo "- Testes: ${{ needs.test.result }}"
+            echo "- Segurança: ${{ needs.security.result }}"
+            echo "- Build de imagens: ${{ needs.container-build.result }}"
+          } >> "$GITHUB_STEP_SUMMARY"

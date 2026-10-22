@@ -1,0 +1,176 @@
+# ---------------------------------------------------------------------------
+# OTIF - stack de PRODUCAO (Docker Swarm).
+#
+# Publicada pelo workflow "Publicação de produção" (deploy-production.yml) via
+# `docker stack deploy`. Nao use `docker compose up` com este arquivo.
+#
+# - As imagens vem do registry.wasion.com.br com tag imutavel (sha-<commit>).
+# - Segredos NUNCA ficam aqui nem no GitHub como variavel de ambiente da app:
+#   sao Docker Swarm Secrets externos, lidos pelo docker-entrypoint.sh via
+#   <VAR>_FILE. Crie-os antes do primeiro deploy (veja "CI/CD e deploy" no README).
+# - Variaveis ${...} sem default sao obrigatorias e exportadas pelo pipeline.
+# - A API nao tem autenticacao: ela so e alcancavel pelo proxy do otif-frontend
+#   (rede interna). Nao publique o backend diretamente no Traefik.
+# ---------------------------------------------------------------------------
+version: "3.8"
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  otif-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: otif
+      POSTGRES_USER: otif
+      POSTGRES_PASSWORD_FILE: /run/secrets/otif_postgres_password
+    secrets:
+      - otif_postgres_password
+    volumes:
+      - otif-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U otif -d otif"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - otif_internal
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+      labels:
+        - "portainer.stack=otif"
+        - "portainer.service=postgres"
+    logging: *default-logging
+
+  otif-backend:
+    image: ${BACKEND_IMAGE:?BACKEND_IMAGE obrigatoria}
+    environment:
+      # Identidade do deploy: exposta em /health e usada para validar a versao.
+      APP_VERSION: ${APP_VERSION:-unknown}
+      APP_COMMIT: ${APP_COMMIT:-unknown}
+      APP_ENVIRONMENT: ${APP_ENVIRONMENT:-unknown}
+
+      # Banco proprio: o entrypoint monta DATABASE_URL a partir do secret.
+      POSTGRES_HOST: otif-postgres
+      POSTGRES_USER: otif
+      POSTGRES_DB: otif
+      POSTGRES_PASSWORD_FILE: /run/secrets/otif_postgres_password
+      RUN_MIGRATIONS: "true"
+
+      # ERP (Jundsoft, somente leitura).
+      ERP_SOURCE: ${ERP_SOURCE:-sqlserver}
+      ERP_READ_MODE: ${ERP_READ_MODE:-direct}
+      JUNDSOFT_HOST: ${JUNDSOFT_HOST:?JUNDSOFT_HOST obrigatoria}
+      JUNDSOFT_PORT: ${JUNDSOFT_PORT:-1433}
+      JUNDSOFT_DATABASE: ${JUNDSOFT_DATABASE:-JUNDSOFT}
+      JUNDSOFT_USERNAME: ${JUNDSOFT_USERNAME:?JUNDSOFT_USERNAME obrigatoria}
+      JUNDSOFT_PASSWORD_FILE: /run/secrets/otif_jundsoft_password
+      JUNDSOFT_ODBC_DRIVER: ${JUNDSOFT_ODBC_DRIVER:-ODBC Driver 18 for SQL Server}
+      JUNDSOFT_ENCRYPT: ${JUNDSOFT_ENCRYPT:-true}
+      # Default seguro. Use true apenas se o SQL Server tiver certificado autoassinado.
+      JUNDSOFT_TRUST_SERVER_CERTIFICATE: ${JUNDSOFT_TRUST_SERVER_CERTIFICATE:-false}
+
+      # Inspecao LEM / Producao automaticas (jigadb, somente leitura).
+      LEM_SOURCE: ${LEM_SOURCE:-manual}
+      PRODUCAO_SOURCE: ${PRODUCAO_SOURCE:-manual}
+      JIGADB_HOST: ${JIGADB_HOST:-}
+      JIGADB_PORT: ${JIGADB_PORT:-3306}
+      JIGADB_DATABASE: ${JIGADB_DATABASE:-jigadb}
+      JIGADB_USERNAME: ${JIGADB_USERNAME:-}
+      JIGADB_PASSWORD_FILE: /run/secrets/otif_jigadb_password
+      JIGADB_PREFIXO_OS_INSP: ${JIGADB_PREFIXO_OS_INSP:-INSP}
+
+      CORS_ORIGINS: https://otif.wasion.com.br
+
+      # Observabilidade: traces (Tempo), profiles (Pyroscope) e logs (Loki) via Alloy.
+      LOG_LEVEL: INFO
+      TRACING_ENABLED: "true"
+      TRACING_SERVICE_NAME: otif-backend
+      TRACING_ENVIRONMENT: production
+      TRACING_OTLP_ENDPOINT: http://alloy:4318/v1/traces
+      TRACING_EXCLUDED_URLS: /docs,/redoc,/openapi.json,/health
+      PYROSCOPE_ENABLED: "true"
+      PYROSCOPE_SERVER_ADDRESS: http://alloy:9999
+      PYROSCOPE_APPLICATION_NAME: otif-backend
+      PYROSCOPE_ENVIRONMENT: production
+    secrets:
+      - otif_postgres_password
+      - otif_jundsoft_password
+      - otif_jigadb_password
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    networks:
+      - otif_internal
+      # Alcanca o Alloy (OTLP/Pyroscope), que vive na rede compartilhada.
+      - controle_overlay
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+      update_config:
+        order: start-first
+        monitor: 30s
+        failure_action: rollback
+      rollback_config:
+        order: start-first
+      labels:
+        - "portainer.stack=otif"
+        - "portainer.service=backend"
+    logging: *default-logging
+
+  otif-frontend:
+    image: ${FRONTEND_IMAGE:?FRONTEND_IMAGE obrigatoria}
+    environment:
+      # O Nginx faz proxy da API para o backend pela rede interna.
+      BACKEND_UPSTREAM: http://otif-backend:8000
+    networks:
+      - otif_internal
+      - controle_overlay
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+      update_config:
+        order: start-first
+        monitor: 15s
+        failure_action: rollback
+      labels:
+        - "portainer.stack=otif"
+        - "portainer.service=frontend"
+        - "traefik.enable=true"
+        - "traefik.docker.network=controle_overlay"
+        - "traefik.http.routers.otif.rule=Host(`otif.wasion.com.br`)"
+        - "traefik.http.routers.otif.entrypoints=websecure"
+        - "traefik.http.routers.otif.tls=true"
+        - "traefik.http.services.otif.loadbalancer.server.port=8080"
+    logging: *default-logging
+
+volumes:
+  otif-postgres-data:
+
+networks:
+  # Rede compartilhada com Traefik e Alloy (ja existe no Swarm).
+  controle_overlay:
+    external: true
+
+  otif_internal:
+    driver: overlay
+    attachable: true
+
+secrets:
+  otif_postgres_password:
+    external: true
+  otif_jundsoft_password:
+    external: true
+  otif_jigadb_password:
+    external: true

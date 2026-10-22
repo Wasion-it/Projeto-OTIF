@@ -24,7 +24,7 @@ ENV VITE_API_URL=${VITE_API_URL}
 RUN npm run build
 
 # ---- Stage 2: runtime ----
-FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
+FROM nginxinc/nginx-unprivileged:1.30.5-alpine3.24 AS runtime
 
 # Origem do backend usada pelo proxy (envsubst no template em runtime).
 ENV BACKEND_UPSTREAM=http://otif-backend:8000

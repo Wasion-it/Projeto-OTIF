@@ -216,6 +216,70 @@ npm run build
 As tabelas e colunas antigas de SLA permanecem fisicamente nesta primeira etapa
 apenas para rollback, mas não são usadas no cálculo nem expostas pela API/UI.
 
+## CI/CD e deploy
+
+Mesmo padrão do Sistema de RH: runners internos (`wasion-runners`), imagens
+imutáveis no `registry.wasion.com.br` e deploy em Docker Swarm atrás do Traefik.
+
+| Workflow | Quando roda | O que faz |
+|---|---|---|
+| `pr-validation.yml` | PR para `main`/`develop` | pytest + build do frontend, DevSecOps (pip-audit, npm audit, Bandit, Trivy) e build das imagens sem publicar |
+| `scheduled-validation.yml` | segunda 03:00 UTC ou manual | mesmas verificações, para pegar CVEs novas sem código novo |
+| `deploy-production.yml` | **manual** (`workflow_dispatch`) | valida, publica `sha-<commit>`, faz deploy no Swarm, confirma o commit em `/health`, registra annotation no Grafana e cria o release |
+
+O deploy só termina com sucesso se o Swarm não precisar fazer rollback e se o
+`/health` público devolver o `commit` publicado. Os `includes-*.yml` são as peças
+reutilizáveis.
+
+### Preparar o servidor (uma vez)
+
+No manager do Swarm, crie os segredos da aplicação. Eles nunca passam pelo GitHub:
+
+```bash
+printf '%s' '<senha-do-postgres>'  | docker secret create otif_postgres_password -
+printf '%s' '<senha-do-jundsoft>'  | docker secret create otif_jundsoft_password -
+printf '%s' '<senha-do-jigadb>'    | docker secret create otif_jigadb_password -
+```
+
+Os três são obrigatórios, mesmo com `LEM_SOURCE=manual` (use um valor qualquer para
+o `jigadb`). Use usuários **somente leitura** no Jundsoft e no jigadb. A rede
+`controle_overlay` (Traefik e Alloy) precisa existir. O runner precisa estar
+liberado para este repositório no grupo de runners da organização. O domínio
+`otif.wasion.com.br` fica fixo no `docker-compose.prod.yml` e no workflow de
+deploy (como no RH): o DNS precisa apontar para o Traefik e o certificado TLS
+precisa cobrir esse nome.
+
+### Configuração no GitHub
+
+Secrets (Settings > Secrets and variables > Actions > Secrets):
+`DEPLOY_PROD_SSH_KEY`, `REGISTRY_USERNAME`, `REGISTRY_PASSWORD`, `GRAFANA_ANNOTATION_TOKEN`.
+
+Variables (aba Variables):
+
+| Variável | Obrigatória | Exemplo / observação |
+|---|---|---|
+| `DEPLOY_PROD_HOST` | sim | hostname do manager do Swarm |
+| `DEPLOY_PROD_USER` | sim | usuário SSH do deploy |
+| `DEPLOY_PROD_PATH` | sim | diretório do manifesto no servidor |
+| `GRAFANA_URL` | sim | URL base do Grafana |
+| `JUNDSOFT_HOST` / `JUNDSOFT_USERNAME` | sim | `JUNDSOFT_PORT`, `JUNDSOFT_DATABASE` têm default |
+| `ERP_SOURCE`, `ERP_READ_MODE` | não | default `sqlserver` / `direct` |
+| `JUNDSOFT_TRUST_SERVER_CERTIFICATE` | não | default `false`; `true` só com certificado autoassinado |
+| `LEM_SOURCE`, `PRODUCAO_SOURCE` | não | default `manual`; `jigadb` exige `JIGADB_*` |
+| `JIGADB_HOST`, `JIGADB_PORT`, `JIGADB_DATABASE`, `JIGADB_USERNAME` | se usar `jigadb` | |
+| `DEPLOY_PROD_HOST_FINGERPRINT` | não | fixa a chave SSH do servidor (recomendado) |
+
+Crie também o environment `prod` (Settings > Environments) se quiser exigir
+aprovação manual antes do deploy.
+
+### Observabilidade
+
+O backend exporta traces (OpenTelemetry → Alloy → Tempo), profiles (Pyroscope) e
+logs em stdout com `trace_id`/`span_id` para correlação no Loki. Tudo vem desligado
+por padrão (`TRACING_ENABLED`, `PYROSCOPE_ENABLED`) e é ligado no
+`docker-compose.prod.yml`. `/health` devolve `version`, `commit` e `environment`.
+Cada deploy gera uma annotation no Grafana (tags `deploy`, `otif`, `prod`).
+
 ## Antes de produção
 
 - adicionar autenticação e autorização;

@@ -1,0 +1,70 @@
+name: Validação de segurança
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  security:
+    name: DevSecOps - dependências, código e secrets
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Auditoria de dependências Python
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip pip-audit
+          pip-audit \
+            -r backend/requirements.txt \
+            -r backend/requirements-observability.txt \
+            --vulnerability-service osv \
+            --progress-spinner off
+
+      - name: Auditoria de dependências frontend
+        working-directory: frontend
+        shell: bash
+        run: npm audit --omit=dev --audit-level=critical
+
+      - name: Análise estática Python com Bandit
+        shell: bash
+        run: |
+          python -m pip install bandit
+          bandit -r backend/app -ll --exit-zero
+
+      - name: Trivy - secrets e vulnerabilidades do repositório
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          format: table
+
+      - name: Resumo DevSecOps
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          {
+            echo '## DevSecOps'
+            echo ''
+            echo '- Dependências Python: pip-audit'
+            echo '- Dependências frontend: npm audit'
+            echo '- SAST Python: Bandit (visibilidade, sem bloquear nesta fase)'
+            echo '- Secrets/vulnerabilidades do repositório: Trivy'
+            echo '- Gate inicial: vulnerabilidades CRITICAL e secrets detectados pelo Trivy'
+          } >> "$GITHUB_STEP_SUMMARY"
